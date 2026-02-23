@@ -1,7 +1,8 @@
 import { NextFunction, Request, Response } from 'express';
-import jwt, { JwtPayload } from 'jsonwebtoken';
+import jwt, { JwtHeader, JwtPayload } from 'jsonwebtoken';
 import { AuthenticatedRequest } from '../types/common';
 import { env } from '../config/env';
+import { getPublicKeyByKid } from '../utils/jwksClient';
 
 interface UniConnectJwtPayload {
   email?: string;
@@ -27,14 +28,25 @@ const authMiddleware = (req: Request, res: Response, next: NextFunction): void =
       return;
     }
 
-    const decoded: string | JwtPayload = jwt.verify(token, env.supabaseJwtSecret);
+    const decoded = jwt.decode(token, { complete: true });
+    const kid = (decoded?.header as JwtHeader | undefined)?.kid ?? '';
 
-    if (typeof decoded === 'string') {
+    const publicKey = getPublicKeyByKid(kid);
+    if (!publicKey) {
       sendError(res, 401, 'Token inválido');
       return;
     }
 
-    const payload: UniConnectJwtPayload = decoded;
+    const verified: string | JwtPayload = jwt.verify(token, publicKey, {
+      algorithms: ['ES256'],
+    });
+
+    if (typeof verified === 'string') {
+      sendError(res, 401, 'Token inválido');
+      return;
+    }
+
+    const payload: UniConnectJwtPayload = verified;
     const userId: string | undefined = payload.sub;
     const email: string | undefined = payload.email;
 
@@ -44,17 +56,13 @@ const authMiddleware = (req: Request, res: Response, next: NextFunction): void =
     }
 
     const allowedDomain: string = env.allowedDomain.toLowerCase();
-    const normalizedEmail: string = email.toLowerCase();
 
-    if (!normalizedEmail.endsWith(`@${allowedDomain}`)) {
+    if (!email.toLowerCase().endsWith(`@${allowedDomain}`)) {
       sendError(res, 403, 'Acceso restringido a correos institucionales');
       return;
     }
 
-    (req as AuthenticatedRequest).user = {
-      id: userId,
-      email,
-    };
+    (req as AuthenticatedRequest).user = { id: userId, email };
 
     next();
   } catch (error: unknown) {
@@ -63,14 +71,12 @@ const authMiddleware = (req: Request, res: Response, next: NextFunction): void =
         sendError(res, 401, 'Token expirado');
         return;
       }
-
       if (error.name === 'JsonWebTokenError') {
         sendError(res, 401, 'Token inválido');
         return;
       }
     }
-
-    console.error('Error inesperado en auth middleware:', error);
+    console.error('[auth] Error inesperado:', error);
     sendError(res, 500, 'Error interno del servidor');
   }
 };
