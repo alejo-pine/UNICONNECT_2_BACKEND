@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
 import {
-  getAllProfiles,
-  getProfileById as fetchProfileById,
-} from '../services/profileService';
+  getAllMaterias,
+  getMateriaById as fetchMateriaById,
+} from '../services/materiaService';
 
-export const getProfiles = async (req: Request, res: Response): Promise<void> => {
-  const result = await getAllProfiles();
+export const getMaterias = async (req: Request, res: Response): Promise<void> => {
+  const result = await getAllMaterias();
 
   if (result.error) {
     res.status(result.statusCode).json({ error: result.error, statusCode: result.statusCode });
@@ -15,10 +15,10 @@ export const getProfiles = async (req: Request, res: Response): Promise<void> =>
   res.status(200).json({ data: result.data });
 };
 
-export const getProfileById = async (req: Request<{ id: string }>, res: Response): Promise<void> => {
+export const getMateriaById = async (req: Request<{ id: string }>, res: Response): Promise<void> => {
   const { id } = req.params;
 
-  const result = await fetchProfileById(id);
+  const result = await fetchMateriaById(id);
 
   if (result.error) {
     res.status(result.statusCode).json({ error: result.error, statusCode: result.statusCode });
