@@ -1,9 +1,13 @@
 import { env } from './config/env';
-import express, { Express, NextFunction, Request, Response, Router } from 'express';
+import express, { NextFunction, Request, Response, Router } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import authMiddleware from './middlewares/auth';
+import { checkDatabaseConnection } from './config/database';
+import { initializeJWKS } from './utils/jwksClient';
+import profilesRouter from './routes/profiles/index';
+import materiasRouter from './routes/materias/index';
 import app from './app';
 
 // ============================================================================
@@ -73,7 +77,8 @@ app.use('/api/auth', authRouter);
 
 const apiRouter: Router = Router();
 
-// Aquí irán las rutas protegidas
+apiRouter.use('/profiles', profilesRouter);
+apiRouter.use('/materias', materiasRouter);
 
 app.use('/api', authMiddleware, apiRouter);
 
@@ -117,9 +122,31 @@ app.use(
 // 7. INICIAR SERVIDOR
 // ============================================================================
 
-app.listen(env.port, (): void => {
-  console.log(`🚀 UniConnect Backend corriendo en puerto ${env.port}`);
-  console.log(`🌍 Ambiente: ${env.nodeEnv}`);
-});
+const startServer = async (): Promise<void> => {
+  console.log('� Cargando claves públicas JWKS de Supabase...');
+  try {
+    await initializeJWKS();
+    console.log('✅ JWKS cargado correctamente (ES256)');
+  } catch (err) {
+    console.error('❌ Error al cargar JWKS:', err);
+    process.exit(1);
+  }
+
+  console.log('🔌 Conectando a Supabase...');
+  const isConnected = await checkDatabaseConnection();
+  if (isConnected) {
+    console.log('✅ Conexión a Supabase establecida correctamente');
+  } else {
+    console.error('❌ No se pudo establecer conexión con Supabase — verifica las variables de entorno');
+  }
+
+  app.listen(env.port, (): void => {
+    console.log(`🚀 UniConnect Backend corriendo en puerto ${env.port}`);
+    console.log(`🌍 Ambiente: ${env.nodeEnv}`);
+    console.log(`🔗 http://localhost:${env.port}`);
+  });
+};
+
+startServer();
 
 export default app;
