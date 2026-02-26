@@ -34,3 +34,9 @@ export interface ServiceResult<T> {
   error: string | null;
   statusCode: number;
 }
+
+// ── Students ──────────────────────────────────────────────────────────────────
+
+export interface CompaneroResult {
+  id_perfil: string;
+}
