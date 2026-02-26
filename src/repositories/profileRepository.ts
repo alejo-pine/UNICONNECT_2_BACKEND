@@ -28,3 +28,15 @@ export const findProfileById = async (id: string): Promise<Profile | null> => {
 
   return data as Profile;
 };
+
+export const updateProfileById = async (id: string, updates: Partial<Profile>): Promise<Profile | null> => {
+  const { data, error } = await supabase
+    .from(TABLE)
+    .update(updates)
+    .eq('id_perfil', id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data as Profile;
+};
