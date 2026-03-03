@@ -33,7 +33,7 @@ export const updateProfileById = async (id: string, updates: Partial<Profile>): 
   const { data, error } = await supabase
     .from(TABLE)
     .update(updates)
-    .eq('id_perfil', id)
+    .eq('id', id)
     .select()
     .single();
 

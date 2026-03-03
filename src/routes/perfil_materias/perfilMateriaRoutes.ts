@@ -4,7 +4,8 @@ import { getMateriasByPerfil, addMateriaToPerfilController, removeMateriaFromPer
 
 const router = Router();
 
-router.get('/:id_perfil', getMateriasByPerfil);
+
+router.get('/:profile_id', getMateriasByPerfil);
 
 router.post('/', addMateriaToPerfilController);
 router.delete('/', removeMateriaFromPerfilController);

@@ -30,7 +30,7 @@ export const updateProfile = async (id: string, profileData: Partial<Profile>): 
   try {
     // 1. Extraemos los campos sensibles que NO deben enviarse en el UPDATE de Supabase
     // para evitar errores de integridad o de "column not found"
-    const { id_perfil, fecha_creacion, ...dataToUpdate } = profileData as any;
+    const { created_at, ...dataToUpdate } = profileData as any;
 
     // 2. Llamamos al repositorio para ejecutar la actualización
     const updatedData = await updateProfileById(id, dataToUpdate);

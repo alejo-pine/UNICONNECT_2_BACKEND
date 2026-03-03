@@ -1,21 +1,23 @@
 import { supabase } from '../utils/supabaseClient';
 
-const TABLE = 'perfil_materia';
+const TABLE = 'profile_subject';
 
-export const findMateriasByPerfil = async (id_perfil: string) => {
+
+export const findMateriasByPerfil = async (profile_id: string) => {
   const { data, error } = await supabase
     .from(TABLE)
-    .select('id_materia, fecha_creacion')
-    .eq('id_perfil', id_perfil);
+    .select('subject_id, created_at')
+    .eq('profile_id', profile_id);
 
   if (error) throw new Error(error.message);
   return data ?? [];
 };
 
-export const addMateriaToPerfil = async (id_perfil: string, id_materia: string) => {
+
+export const addMateriaToPerfil = async (profile_id: string, subject_id: string) => {
   const { data, error } = await supabase
     .from(TABLE)
-    .insert([{ id_perfil, id_materia }])
+    .insert([{ profile_id, subject_id }])
     .select()
     .single();
 
@@ -23,34 +25,36 @@ export const addMateriaToPerfil = async (id_perfil: string, id_materia: string) 
   return data;
 };
 
-export const removeMateriaFromPerfil = async (id_perfil: string, id_materia: string) => {
+
+export const removeMateriaFromPerfil = async (profile_id: string, subject_id: string) => {
   const { error } = await supabase
     .from(TABLE)
     .delete()
-    .eq('id_perfil', id_perfil)
-    .eq('id_materia', id_materia);
+    .eq('profile_id', profile_id)
+    .eq('subject_id', subject_id);
 
   if (error) throw new Error(error.message);
   return true;
 };
 
-export const findMateriasInfoByPerfil = async (id_perfil: string) => {
+
+export const findMateriasInfoByPerfil = async (profile_id: string) => {
   const { data, error } = await supabase
-    .from('perfil_materia')
+    .from('profile_subject')
     .select(`
-      id_materia,
-      materia (
+      subject_id,
+      subject (
         id,
-        nombre,
-        codigo,
-        programa,
-        fecha_creacion
+        name,
+        code,
+        program,
+        created_at
       )
     `)
-    .eq('id_perfil', id_perfil);
+    .eq('profile_id', profile_id);
 
   if (error) throw new Error(error.message);
 
   // Devuelve solo la información de la materia
-  return (data ?? []).map((row: any) => row.materia);
+  return (data ?? []).map((row: any) => row.subject);
 };

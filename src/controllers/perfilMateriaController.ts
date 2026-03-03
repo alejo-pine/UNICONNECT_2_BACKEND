@@ -2,9 +2,10 @@ import { Request, Response } from 'express';
 import * as service from '../services/perfilMateriaService';
 import { getMateriasInfoByPerfil } from '../services/perfilMateriaService';
 
-export const getMateriasByPerfil = async (req: Request<{ id_perfil: string }>, res: Response) => {
-  const { id_perfil } = req.params;
-  const result = await getMateriasInfoByPerfil(id_perfil);
+
+export const getMateriasByPerfil = async (req: Request<{ profile_id: string }>, res: Response) => {
+  const { profile_id } = req.params;
+  const result = await getMateriasInfoByPerfil(profile_id);
   if (result.error) {
     res.status(result.statusCode).json({ error: result.error });
     return;
@@ -12,19 +13,21 @@ export const getMateriasByPerfil = async (req: Request<{ id_perfil: string }>, r
   res.status(200).json({ data: result.data });
 };
 
+
 export const addMateriaToPerfilController = async (req: Request, res: Response) => {
-  const { id_perfil, id_materia } = req.body;
-  const result = await service.addMateria(id_perfil, id_materia);
+  const { profile_id, subject_id } = req.body;
+  const result = await service.addMateria(profile_id, subject_id);
   if (result.error) {
     res.status(result.statusCode).json({ error: result.error });
     return;
   }
   res.status(result.statusCode).json({ data: result.data });
 };
+
 
 export const removeMateriaFromPerfilController = async (req: Request, res: Response) => {
-  const { id_perfil, id_materia } = req.body;
-  const result = await service.removeMateria(id_perfil, id_materia);
+  const { profile_id, subject_id } = req.body;
+  const result = await service.removeMateria(profile_id, subject_id);
   if (result.error) {
     res.status(result.statusCode).json({ error: result.error });
     return;
@@ -32,14 +35,5 @@ export const removeMateriaFromPerfilController = async (req: Request, res: Respo
   res.status(result.statusCode).json({ data: result.data });
 };
 
-export const addMateria = async (req: Request, res: Response) => {
-  const { id_perfil, id_materia } = req.body;
-  const result = await service.addMateria(id_perfil, id_materia);
-  res.status(result.statusCode).json(result.error ? { error: result.error } : { data: result.data });
-};
 
-export const removeMateria = async (req: Request, res: Response) => {
-  const { id_perfil, id_materia } = req.body;
-  const result = await service.removeMateria(id_perfil, id_materia);
-  res.status(result.statusCode).json(result.error ? { error: result.error } : { data: result.data });
-};
+// Métodos antiguos eliminados porque ya no corresponden a la nueva estructura
