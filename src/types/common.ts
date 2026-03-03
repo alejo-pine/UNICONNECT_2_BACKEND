@@ -9,34 +9,48 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
-// ── Entidades del dominio ─────────────────────────────────────────────────────
+// ── Domain Entities ───────────────────────────────────────────────────────────
 
 export interface Profile {
-  id_perfil: string;
-  carrera: string | null;
-  semestre: number | null;
-  celular: string | null;
-  fecha_creacion: string;
-}
-
-export interface Materia {
   id: string;
-  nombre: string;
-  codigo: string;
-  programa: string | null;
-  fecha_creacion: string;
+  name: string;
+  email: string;
+  avatar_url: string | null;
+  career: string | null;
+  semester: number | null;
+  phone_number: string | null;
+  created_at: string;
 }
 
-// ── Resultado estándar de servicios ──────────────────────────────────────────
+export interface Subject {
+  id: string;
+  name: string;
+  code: string;
+  program: string | null;
+  created_at: string;
+}
+
+// ── Projected / UI types ──────────────────────────────────────────────────────
+
+/** Lightweight projection used for subject dropdown autocomplete */
+export interface SubjectSummary {
+  id: string;
+  name: string;
+}
+
+/** Flat classmate profile returned when searching by subject */
+export interface ClassmateProfile {
+  id: string;
+  name: string;
+  career: string | null;
+  semester: number | null;
+  avatar_url: string | null;
+}
+
+// ── Standard service result ───────────────────────────────────────────────────
 
 export interface ServiceResult<T> {
   data: T | null;
   error: string | null;
   statusCode: number;
-}
-
-// ── Students ──────────────────────────────────────────────────────────────────
-
-export interface CompaneroResult {
-  id_perfil: string;
 }

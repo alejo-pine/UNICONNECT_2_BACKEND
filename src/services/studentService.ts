@@ -1,16 +1,16 @@
-import { findCompanerosByMateria } from '../repositories/studentRepository';
-import { CompaneroResult, ServiceResult } from '../types/common';
+import { findClassmatesBySubject } from '../repositories/studentRepository';
+import { ClassmateProfile, ServiceResult } from '../types/common';
 
-export const getCompanerosByMateria = async (
-  idMateria: string,
-  idPerfilActual: string
-): Promise<ServiceResult<CompaneroResult[]>> => {
+export const getClassmatesBySubject = async (
+  subjectId: string,
+  currentProfileId: string
+): Promise<ServiceResult<ClassmateProfile[]>> => {
   try {
-    const data = await findCompanerosByMateria(idMateria, idPerfilActual);
+    const data = await findClassmatesBySubject(subjectId, currentProfileId);
     return { data, error: null, statusCode: 200 };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Error al obtener compañeros';
-    console.error('[studentService.getCompanerosByMateria]', message);
-    return { data: null, error: 'Error al obtener los compañeros de la materia', statusCode: 500 };
+    const message = err instanceof Error ? err.message : 'Error fetching classmates';
+    console.error('[studentService.getClassmatesBySubject]', message);
+    return { data: null, error: 'Error fetching classmates for subject', statusCode: 500 };
   }
 };

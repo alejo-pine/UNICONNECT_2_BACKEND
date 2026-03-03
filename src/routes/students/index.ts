@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { getCompaneros } from '../../controllers/studentController';
+import { getClassmates } from '../../controllers/studentController';
 
 const router: Router = Router();
 
-// GET /api/students/companeros/:id_materia
-router.get('/companeros/:id_materia', getCompaneros);
+// GET /api/students/classmates/:subjectId
+router.get('/classmates/:subjectId', getClassmates);
 
 export default router;

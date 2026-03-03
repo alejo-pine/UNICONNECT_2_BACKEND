@@ -1,19 +1,27 @@
 import { supabase } from '../utils/supabaseClient';
-import { CompaneroResult } from '../types/common';
+import { ClassmateProfile } from '../types/common';
 
-const TABLE = 'perfil_materia';
+const PIVOT_TABLE = 'profile_subject';
 
-export const findCompanerosByMateria = async (
-  idMateria: string,
-  idPerfilActual: string
-): Promise<CompaneroResult[]> => {
+/**
+ * Queries the profile_subject pivot table filtered by subjectId, joins the
+ * related profile data, and returns a flat array of classmate profiles.
+ * The currently logged-in profile is excluded from the results.
+ */
+export const findClassmatesBySubject = async (
+  subjectId: string,
+  currentProfileId: string
+): Promise<ClassmateProfile[]> => {
   const { data, error } = await supabase
-    .from(TABLE)
-    .select('id_perfil')
-    .eq('id_materia', idMateria)
-    .neq('id_perfil', idPerfilActual);
+    .from(PIVOT_TABLE)
+    .select('profile:profile_id(id, name, career, semester, avatar_url)')
+    .eq('subject_id', subjectId)
+    .neq('profile_id', currentProfileId);
 
   if (error) throw new Error(error.message);
 
-  return (data ?? []) as CompaneroResult[];
+  // Flatten the nested profile object produced by the Supabase FK join
+  return (data ?? [])
+    .map((row: any) => row.profile)
+    .filter(Boolean) as ClassmateProfile[];
 };

@@ -1,15 +1,20 @@
-import { Response } from 'express';
+import { RequestHandler } from 'express';
 import { AuthenticatedRequest } from '../types/common';
-import { getCompanerosByMateria } from '../services/studentService';
+import { getClassmatesBySubject } from '../services/studentService';
 
-export const getCompaneros = async (
-  req: AuthenticatedRequest & { params: { id_materia: string } },
-  res: Response
+/**
+ * GET /api/students/classmates/:subjectId
+ * Returns flat profile cards of every student enrolled in the given subject,
+ * excluding the currently authenticated user.
+ */
+export const getClassmates: RequestHandler<{ subjectId: string }> = async (
+  req,
+  res
 ): Promise<void> => {
-  const { id_materia } = req.params;
-  const idPerfilActual = req.user.id;
+  const { subjectId } = req.params;
+  const currentProfileId = (req as unknown as AuthenticatedRequest).user.id;
 
-  const result = await getCompanerosByMateria(id_materia, idPerfilActual);
+  const result = await getClassmatesBySubject(subjectId, currentProfileId);
 
   if (result.error) {
     res.status(result.statusCode).json({ error: result.error, statusCode: result.statusCode });
