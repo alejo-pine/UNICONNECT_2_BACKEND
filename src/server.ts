@@ -7,8 +7,8 @@ import authMiddleware from './middlewares/auth';
 import { checkDatabaseConnection } from './config/database';
 import { initializeJWKS } from './utils/jwksClient';
 import profilesRouter from './routes/profiles/index';
-import materiasRouter from './routes/materias/index';
-import perfilMateriaRouter from './routes/perfil_materias/perfilMateriaRoutes';
+import subjectsRouter from './routes/subjects/index';
+import studentsRouter from './routes/students/index';
 import app from './app';
 
 // ============================================================================
@@ -79,8 +79,7 @@ app.use('/api/auth', authRouter);
 const apiRouter: Router = Router();
 
 apiRouter.use('/profiles', profilesRouter);
-apiRouter.use('/materias', materiasRouter);
-apiRouter.use('/perfil-materias', perfilMateriaRouter);
+apiRouter.use('/materias', subjectsRouter);
 
 app.use('/api', authMiddleware, apiRouter);
 
