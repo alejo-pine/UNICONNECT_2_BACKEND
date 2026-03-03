@@ -1,4 +1,4 @@
-import { findClassmatesBySubject } from '../repositories/studentRepository';
+import { verifyEnrollment, findClassmatesBySubject } from '../repositories/studentRepository';
 import { ClassmateProfile, ServiceResult } from '../types/common';
 
 export const getClassmatesBySubject = async (
@@ -6,6 +6,16 @@ export const getClassmatesBySubject = async (
   currentProfileId: string
 ): Promise<ServiceResult<ClassmateProfile[]>> => {
   try {
+    const isEnrolled = await verifyEnrollment(currentProfileId, subjectId);
+
+    if (!isEnrolled) {
+      return {
+        data: null,
+        error: 'Forbidden: You are not enrolled in this subject',
+        statusCode: 403,
+      };
+    }
+
     const data = await findClassmatesBySubject(subjectId, currentProfileId);
     return { data, error: null, statusCode: 200 };
   } catch (err: unknown) {
