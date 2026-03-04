@@ -4,6 +4,26 @@ import { ClassmateProfile } from '../types/common';
 const PIVOT_TABLE = 'profile_subject';
 
 /**
+ * Returns true if the given profile is enrolled in the given subject,
+ * false if no matching row exists. Throws on database error.
+ */
+export const verifyEnrollment = async (
+  profileId: string,
+  subjectId: string
+): Promise<boolean> => {
+  const { data, error } = await supabase
+    .from(PIVOT_TABLE)
+    .select('profile_id')
+    .eq('profile_id', profileId)
+    .eq('subject_id', subjectId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+
+  return data !== null;
+};
+
+/**
  * Queries the profile_subject pivot table filtered by subjectId, joins the
  * related profile data, and returns a flat array of classmate profiles.
  * The currently logged-in profile is excluded from the results.
