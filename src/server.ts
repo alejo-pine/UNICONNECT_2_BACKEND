@@ -9,6 +9,7 @@ import { initializeJWKS } from './utils/jwksClient';
 import profilesRouter from './routes/profiles/index';
 import subjectsRouter from './routes/subjects/index';
 import studentsRouter from './routes/students/index';
+import profileSubjectsRouter from './routes/profile-subjects/profileSubjectsRoutes';
 import app from './app';
 
 // ============================================================================
@@ -78,10 +79,11 @@ app.use('/api/auth', authRouter);
 
 const apiRouter: Router = Router();
 
+
 apiRouter.use('/profiles', profilesRouter);
 apiRouter.use('/subjects', subjectsRouter);
 apiRouter.use('/students', studentsRouter);
-
+apiRouter.use('/profile-subjects', profileSubjectsRouter);
 app.use('/api', authMiddleware, apiRouter);
 
 // ============================================================================
