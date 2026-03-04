@@ -9,8 +9,7 @@ import { initializeJWKS } from './utils/jwksClient';
 import profilesRouter from './routes/profiles/index';
 import subjectsRouter from './routes/subjects/index';
 import studentsRouter from './routes/students/index';
-import perfilMateriaRouter from './routes/perfil_materias/perfilMateriaRoutes';
-import perfilMateriaRouter from './routes/perfil_materias/perfilMateriaRoutes';
+import profileSubjectsRouter from './routes/profile-subjects/profileSubjectsRoutes';
 import app from './app';
 
 // ============================================================================
@@ -84,8 +83,7 @@ const apiRouter: Router = Router();
 apiRouter.use('/profiles', profilesRouter);
 apiRouter.use('/subjects', subjectsRouter);
 apiRouter.use('/students', studentsRouter);
-apiRouter.use('/perfil-materias', perfilMateriaRouter);
-apiRouter.use('/perfil_materias', perfilMateriaRouter);
+apiRouter.use('/profile-subjects', profileSubjectsRouter);
 app.use('/api', authMiddleware, apiRouter);
 
 // ============================================================================

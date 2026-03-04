@@ -3,7 +3,7 @@ import { supabase } from '../utils/supabaseClient';
 const TABLE = 'profile_subject';
 
 
-export const findMateriasByPerfil = async (profile_id: string) => {
+export const findSubjectsByProfile = async (profile_id: string) => {
   const { data, error } = await supabase
     .from(TABLE)
     .select('subject_id, created_at')
@@ -14,7 +14,7 @@ export const findMateriasByPerfil = async (profile_id: string) => {
 };
 
 
-export const addMateriaToPerfil = async (profile_id: string, subject_id: string) => {
+export const addSubjectToProfile = async (profile_id: string, subject_id: string) => {
   const { data, error } = await supabase
     .from(TABLE)
     .insert([{ profile_id, subject_id }])
@@ -26,7 +26,7 @@ export const addMateriaToPerfil = async (profile_id: string, subject_id: string)
 };
 
 
-export const removeMateriaFromPerfil = async (profile_id: string, subject_id: string) => {
+export const removeSubjectFromProfile = async (profile_id: string, subject_id: string) => {
   const { error } = await supabase
     .from(TABLE)
     .delete()
@@ -38,7 +38,7 @@ export const removeMateriaFromPerfil = async (profile_id: string, subject_id: st
 };
 
 
-export const findMateriasInfoByPerfil = async (profile_id: string) => {
+export const findSubjectsInfoByProfile = async (profile_id: string) => {
   const { data, error } = await supabase
     .from('profile_subject')
     .select(`
