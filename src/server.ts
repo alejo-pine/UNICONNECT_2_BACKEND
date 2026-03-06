@@ -15,6 +15,8 @@ import app from './app';
 
 type RequestError = Error & {
   statusCode?: number;
+  status?: number;
+  headers?: Record<string, string>;
 };
 
 const formatRequestContext = (req: Request): Record<string, string | undefined> => ({
@@ -66,10 +68,16 @@ const corsOptions: CorsOptions = {
 app.use(cors(corsOptions));
 app.use(helmet());
 
-app.use((req: Request, _res: Response, next: NextFunction): void => {
-  if (req.path === '/api/auth/sync') {
-    console.info('[auth.sync] Incoming request', formatRequestContext(req));
-  }
+app.use('/api/auth/sync', (req: Request, _res: Response, next: NextFunction): void => {
+  console.log('\n=========================================');
+  console.log('🚨 [auth.sync] PETICION ENTRANTE!');
+  console.log(
+    '🔑 Header Authorization:',
+    req.headers.authorization
+      ? `${req.headers.authorization.substring(0, 30)}... (cortado)`
+      : '❌ ¡UNDEFINED! No viene ningun token'
+  );
+  console.log('=========================================\n');
   next();
 });
 
@@ -159,7 +167,15 @@ app.use(
     res: Response,
     next: NextFunction
   ): void => {
-    const statusCode = err.statusCode ?? 500;
+    const statusCode = err.statusCode ?? err.status ?? 500;
+
+    if (statusCode === 401) {
+      console.error('[Auth0 ERROR RECHAZO]:', err.message);
+      console.error(
+        '[Detalles de cabecera]:',
+        err.headers ? err.headers['www-authenticate'] : undefined
+      );
+    }
 
     if (statusCode === 403 && err.message.startsWith('CORS bloqueado')) {
       console.warn('[cors] Request blocked', {

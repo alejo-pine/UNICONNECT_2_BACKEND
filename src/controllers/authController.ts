@@ -2,16 +2,6 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { supabase } from '../utils/supabaseClient';
 import { env } from '../config/env';
-import { AuthError, extractBearerToken, verifyAccessToken } from '../utils/jwtAuth';
-
-interface SyncProfileBody {
-  auth0_id?: string;
-  email?: string;
-  name?: string;
-  redirect_uri?: string;
-  issuer?: string;
-  audience?: string;
-}
 
 const PROFILE_FIELDS =
   'id, auth0_id, email, name, avatar_url, career, semester, phone_number, created_at';
@@ -24,6 +14,12 @@ interface ProfileRecord {
 }
 
 type RequestContextSource = Pick<Request, 'method' | 'path' | 'get'>;
+
+interface Auth0UserInfo {
+  sub?: string;
+  email?: string;
+  name?: string;
+}
 
 const buildRequestContext = (req: RequestContextSource): Record<string, string | undefined> => ({
   requestId: req.get('x-request-id'),
@@ -58,136 +54,87 @@ const emitSessionToken = (profile: ProfileRecord): string => {
   );
 };
 
+const extractAuthorizationToken = (authorization?: string): string | null => {
+  if (!authorization || !authorization.startsWith('Bearer ')) {
+    return null;
+  }
+  const token = authorization.slice('Bearer '.length).trim();
+  return token.length > 0 ? token : null;
+};
+
+const getUserInfoUrl = (): string | null => {
+  if (env.auth0Domain) {
+    return `https://${env.auth0Domain}/userinfo`;
+  }
+
+  if (env.auth0Issuer) {
+    return new URL('userinfo', env.auth0Issuer).toString();
+  }
+
+  return null;
+};
+
+const fetchAuth0UserInfo = async (token: string): Promise<Auth0UserInfo> => {
+  const userInfoUrl = getUserInfoUrl();
+  if (!userInfoUrl) {
+    throw new Error('Auth0 no configurado');
+  }
+
+  const response = await fetch(userInfoUrl, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Fallo al obtener userinfo: ${response.status}`);
+  }
+
+  return (await response.json()) as Auth0UserInfo;
+};
+
 export const syncAuthProfile = async (
-  req: Request<unknown, unknown, SyncProfileBody>,
+  req: Request,
   res: Response
 ): Promise<void> => {
   const requestContext = buildRequestContext(req);
 
   try {
-    const { auth0_id, email, name, redirect_uri, issuer, audience } = req.body;
-
-    let tokenClaims: ReturnType<typeof verifyAccessToken> | null = null;
-
-    if (req.headers.authorization) {
-      const token = extractBearerToken(req.headers.authorization);
-      tokenClaims = verifyAccessToken(token);
-    } else if (env.requireAuthSyncToken) {
+    const accessToken = extractAuthorizationToken(req.headers.authorization);
+    if (!accessToken) {
       res.status(401).json({
-        error: 'Token de autenticacion requerido para sync',
+        error: 'Token de autenticacion requerido',
         statusCode: 401,
       });
       return;
-    } else {
-      console.warn('[authController.syncAuthProfile] Sync sin Authorization (modo compatibilidad)', {
+    }
+
+    let userInfo: Auth0UserInfo;
+    try {
+      userInfo = await fetchAuth0UserInfo(accessToken);
+    } catch (error: unknown) {
+      console.error('[authController.syncAuthProfile] Error al consultar /userinfo', {
+        message: error instanceof Error ? error.message : 'Error desconocido',
         ...requestContext,
+        error,
       });
-    }
 
-    if (auth0_id === undefined || email === undefined || name === undefined) {
-      res.status(400).json({
-        error: 'Faltan campos requeridos: auth0_id, email y name son obligatorios',
-        statusCode: 400,
-      });
-      return;
-    }
-
-    if (
-      (auth0_id !== undefined && typeof auth0_id !== 'string') ||
-      (email !== undefined && typeof email !== 'string') ||
-      typeof name !== 'string'
-    ) {
-      res.status(400).json({
-        error: 'Los campos auth0_id, email y name deben ser texto',
-        statusCode: 400,
+      res.status(502).json({
+        error: 'No se pudo obtener el perfil desde Auth0',
+        statusCode: 502,
       });
       return;
     }
 
-    const normalizedAuth0Id = (auth0_id ?? '').trim();
-    const normalizedEmail = (email ?? '').trim().toLowerCase();
-    const normalizedName = name.trim();
+    const normalizedAuth0Id = typeof userInfo.sub === 'string' ? userInfo.sub.trim() : '';
+    const normalizedEmail =
+      typeof userInfo.email === 'string' ? userInfo.email.trim().toLowerCase() : '';
+    const normalizedName = typeof userInfo.name === 'string' ? userInfo.name.trim() : '';
 
     if (!normalizedAuth0Id || !normalizedEmail || !normalizedName) {
-      res.status(400).json({
-        error: 'auth0_id, email y name no pueden estar vacíos',
-        statusCode: 400,
-      });
-      return;
-    }
-
-    if (tokenClaims) {
-      if (normalizedAuth0Id !== tokenClaims.sub) {
-        console.warn('[authController.syncAuthProfile] auth0_id no coincide con token', {
-          normalizedAuth0Id,
-          tokenSub: tokenClaims.sub,
-          ...requestContext,
-        });
-        res.status(401).json({
-          error: 'auth0_id no coincide con el token',
-          statusCode: 401,
-        });
-        return;
-      }
-
-      if (normalizedEmail !== tokenClaims.email.trim().toLowerCase()) {
-        console.warn('[authController.syncAuthProfile] email no coincide con token', {
-          normalizedEmail,
-          tokenEmail: tokenClaims.email,
-          ...requestContext,
-        });
-        res.status(401).json({
-          error: 'email no coincide con el token',
-          statusCode: 401,
-        });
-        return;
-      }
-    }
-
-    if (redirect_uri !== undefined) {
-      if (typeof redirect_uri !== 'string') {
-        res.status(400).json({
-          error: 'redirect_uri debe ser texto si se envía',
-          statusCode: 400,
-        });
-        return;
-      }
-
-      if (!env.auth0AllowedRedirectUris.includes(redirect_uri)) {
-        console.warn('[authController.syncAuthProfile] Redirect URI no permitida', {
-          redirectUri: redirect_uri,
-          allowedRedirectUris: env.auth0AllowedRedirectUris,
-          ...requestContext,
-        });
-        res.status(400).json({
-          error: 'redirect_uri no permitida',
-          statusCode: 400,
-        });
-        return;
-      }
-    }
-
-    if (env.auth0Issuer && issuer !== undefined && issuer !== env.auth0Issuer) {
-      console.warn('[authController.syncAuthProfile] Issuer inválido', {
-        expectedIssuer: env.auth0Issuer,
-        receivedIssuer: issuer,
-        ...requestContext,
-      });
       res.status(401).json({
-        error: 'issuer inválido',
-        statusCode: 401,
-      });
-      return;
-    }
-
-    if (env.auth0Audience && audience !== undefined && audience !== env.auth0Audience) {
-      console.warn('[authController.syncAuthProfile] Audience inválido', {
-        expectedAudience: env.auth0Audience,
-        receivedAudience: audience,
-        ...requestContext,
-      });
-      res.status(401).json({
-        error: 'audience inválido',
+        error: 'Token invalido',
         statusCode: 401,
       });
       return;
@@ -322,14 +269,6 @@ export const syncAuthProfile = async (
       },
     });
   } catch (error: unknown) {
-    if (error instanceof AuthError) {
-      res.status(error.statusCode).json({
-        error: error.message,
-        statusCode: error.statusCode,
-      });
-      return;
-    }
-
     const supabaseLikeError =
       typeof error === 'object' && error !== null
         ? (error as {
