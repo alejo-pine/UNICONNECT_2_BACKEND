@@ -1,7 +1,6 @@
 import express, { Express } from 'express';
-import cors from 'cors';
-
 
 const app: Express = express();
-app.use(cors());
+app.set('trust proxy', 1);
+
 export default app;

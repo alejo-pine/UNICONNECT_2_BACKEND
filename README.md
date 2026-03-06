@@ -57,7 +57,7 @@ Crear un archivo `.env` en la raíz del proyecto:
 ```env
 PORT=3001
 SUPABASE_URL=https://<project-ref>.supabase.co
-SUPABASE_ANON_KEY=<anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
 SUPABASE_JWT_SECRET=<jwt-secret>
 ALLOWED_DOMAIN=ucaldas.edu.co
 NODE_ENV=development
@@ -67,7 +67,7 @@ NODE_ENV=development
 |---|---|---|
 | `PORT` | No | Puerto del servidor (default: `3000`) |
 | `SUPABASE_URL` | Sí | URL del proyecto Supabase (debe iniciar con `https://`) |
-| `SUPABASE_ANON_KEY` | Sí | Clave anónima de Supabase (mín. 20 caracteres) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Sí | Service role key de Supabase (mín. 20 caracteres) |
 | `SUPABASE_JWT_SECRET` | Sí | Secreto JWT de Supabase (mín. 20 caracteres) |
 | `ALLOWED_DOMAIN` | Sí | Dominio de correo permitido para autenticación |
 | `NODE_ENV` | No | Entorno: `development`, `production` o `test` |
@@ -91,6 +91,7 @@ npm run lint     # Ejecutar ESLint
 |---|---|---|
 | `GET` | `/health` | Health check del servidor |
 | `GET` | `/api/auth/status` | Estado del servicio de autenticación |
+| `POST` | `/api/auth/sync` | Sincroniza o crea el perfil en la tabla `profile` usando `auth0_id` |
 
 ### Protegidos (requieren Bearer token)
 
