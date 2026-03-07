@@ -93,6 +93,8 @@ npm run lint     # Ejecutar ESLint
 | `GET` | `/api/auth/status` | Estado del servicio de autenticación |
 | `POST` | `/api/auth/sync` | Sincroniza o crea el perfil en la tabla `profile` usando `auth0_id` |
 
+`POST /api/auth/sync` ahora también retorna `needsOnboarding` para que el frontend decida si debe mostrar el flujo de onboarding.
+
 ### Protegidos (requieren Bearer token)
 
 | Método | Ruta | Descripción |
@@ -102,6 +104,8 @@ npm run lint     # Ejecutar ESLint
 | `PUT` | `/api/profiles/:id` | Actualizar perfil por ID |
 | `GET` | `/api/materias` | Listar todas las materias |
 | `GET` | `/api/materias/:id` | Obtener materia por ID |
+| `GET` | `/api/onboarding/status` | Consultar estado de onboarding del usuario autenticado |
+| `POST` | `/api/onboarding/complete` | Marcar onboarding como completado (`{ "skipped": true|false }`) |
 
 ### Autenticación
 
@@ -141,6 +145,13 @@ El token es emitido por **Supabase Auth** (Google OAuth 2.0) y verificado con cl
 | `recurso` | Recursos compartidos por materia |
 | `perfil_materia` | Relación N:M entre perfiles y materias |
 | `miembros_grupo` | Relación N:M entre grupos y miembros |
+| `profile` | Incluye campos de onboarding (`onboarding_required`, `onboarding_completed_at`, `onboarding_skipped_at`) |
+
+Para habilitar onboarding ejecuta el script SQL:
+
+```bash
+supabase/onboarding_schema.sql
+```
 
 ## Seguridad
 

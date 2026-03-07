@@ -10,6 +10,7 @@ import profilesRouter from './routes/profiles/index';
 import subjectsRouter from './routes/subjects/index';
 import studentsRouter from './routes/students/index';
 import profileSubjectsRouter from './routes/profile-subjects/profileSubjectsRoutes';
+import onboardingRouter from './routes/onboarding/index';
 import authRouter from './routes/auth/index';
 import app from './app';
 
@@ -143,6 +144,7 @@ apiRouter.use('/profiles', profilesRouter);
 apiRouter.use('/subjects', subjectsRouter);
 apiRouter.use('/students', studentsRouter);
 apiRouter.use('/profile-subjects', profileSubjectsRouter);
+apiRouter.use('/onboarding', onboardingRouter);
 app.use('/api', authMiddleware, apiRouter);
 
 // ============================================================================

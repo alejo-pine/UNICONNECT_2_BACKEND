@@ -2,6 +2,10 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { supabase } from '../utils/supabaseClient';
 import { env } from '../config/env';
+import {
+  createPendingOnboardingForProfile,
+  getOnboardingStateByProfileId,
+} from '../repositories/onboardingRepository';
 
 const PROFILE_FIELDS =
   'id, auth0_id, email, name, avatar_url, career, semester, phone_number, created_at';
@@ -92,6 +96,19 @@ const fetchAuth0UserInfo = async (token: string): Promise<Auth0UserInfo> => {
   }
 
   return (await response.json()) as Auth0UserInfo;
+};
+
+const resolveNeedsOnboarding = async (
+  profileId: string,
+  created: boolean
+): Promise<boolean> => {
+  if (created) {
+    await createPendingOnboardingForProfile(profileId);
+    return true;
+  }
+
+  const onboardingState = await getOnboardingStateByProfileId(profileId);
+  return onboardingState ? onboardingState.onboarding_required : false;
 };
 
 export const syncAuthProfile = async (
@@ -247,6 +264,7 @@ export const syncAuthProfile = async (
       created = true;
     }
 
+    const needsOnboarding = await resolveNeedsOnboarding(resolvedProfile.id, created);
     const token = emitSessionToken(resolvedProfile);
     const responseStatus = created ? 201 : 200;
 
@@ -256,6 +274,7 @@ export const syncAuthProfile = async (
       tokenIssued: Boolean(token),
       statusCode: responseStatus,
       created,
+      needsOnboarding,
     });
 
     res.status(responseStatus).json({
@@ -263,9 +282,11 @@ export const syncAuthProfile = async (
       userId: resolvedProfile.id,
       email: resolvedProfile.email,
       name: resolvedProfile.name,
+      needsOnboarding,
       data: {
         access_token: token,
         user_id: resolvedProfile.id,
+        needs_onboarding: needsOnboarding,
       },
     });
   } catch (error: unknown) {
