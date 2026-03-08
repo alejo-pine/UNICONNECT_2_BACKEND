@@ -8,11 +8,20 @@ import { getAllSubjects, getSubjectById as fetchSubjectById } from '../services/
  */
 export const getSubjects = async (req: Request, res: Response): Promise<void> => {
   const search = typeof req.query.search === 'string' ? req.query.search.trim() : undefined;
+  const programFromProgram =
+    typeof req.query.program === 'string' ? req.query.program.trim() : undefined;
+  const programFromCareer =
+    typeof req.query.career === 'string' ? req.query.career.trim() : undefined;
+  const program = (programFromProgram || programFromCareer || '').trim() || undefined;
   const limitRaw =
     typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : undefined;
   const limit = limitRaw !== undefined && !isNaN(limitRaw) ? limitRaw : 20;
 
-  const result = await getAllSubjects({ search: search || undefined, limit });
+  const result = await getAllSubjects({
+    search: search || undefined,
+    limit,
+    program,
+  });
 
   if (result.error) {
     res.status(result.statusCode).json({ error: result.error, statusCode: result.statusCode });

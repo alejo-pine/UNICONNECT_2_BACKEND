@@ -6,6 +6,7 @@ const TABLE = 'subject';
 export interface FindAllSubjectsOptions {
   search?: string;
   limit?: number;
+  program?: string;
 }
 
 /**
@@ -15,7 +16,7 @@ export interface FindAllSubjectsOptions {
 export const findAllSubjects = async (
   options: FindAllSubjectsOptions = {}
 ): Promise<SubjectSummary[]> => {
-  const { search, limit = 20 } = options;
+  const { search, limit = 20, program } = options;
 
   let query = supabase
     .from(TABLE)
@@ -25,6 +26,11 @@ export const findAllSubjects = async (
 
   if (search) {
     query = query.ilike('name', `%${search}%`);
+  }
+
+  if (program) {
+    // Match subjects by academic program/career selected in onboarding.
+    query = query.ilike('program', program);
   }
 
   const { data, error } = await query;
