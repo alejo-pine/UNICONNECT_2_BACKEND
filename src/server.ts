@@ -105,13 +105,15 @@ app.use((err: unknown, req: Request, res: Response, next: NextFunction): void =>
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 300,
   message: {
     error: 'Demasiadas peticiones, intenta más tarde',
     statusCode: 429,
   },
   standardHeaders: false,
   legacyHeaders: false,
+  // In local development, frontend hot-reload and retries can easily flood requests.
+  skip: () => env.nodeEnv !== 'production',
 });
 
 app.use(limiter);
