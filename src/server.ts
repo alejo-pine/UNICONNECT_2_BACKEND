@@ -70,15 +70,14 @@ app.use(cors(corsOptions));
 app.use(helmet());
 
 app.use('/api/auth/sync', (req: Request, _res: Response, next: NextFunction): void => {
-  console.log('\n=========================================');
-  console.log('🚨 [auth.sync] PETICION ENTRANTE!');
-  console.log(
-    '🔑 Header Authorization:',
-    req.headers.authorization
-      ? `${req.headers.authorization.substring(0, 30)}... (cortado)`
-      : '❌ ¡UNDEFINED! No viene ningun token'
-  );
-  console.log('=========================================\n');
+  if (env.nodeEnv !== 'production') {
+    console.log('[auth.sync] request received', {
+      hasAuthorizationHeader: Boolean(req.headers.authorization),
+      method: req.method,
+      path: req.path,
+      requestId: req.get('x-request-id'),
+    });
+  }
   next();
 });
 

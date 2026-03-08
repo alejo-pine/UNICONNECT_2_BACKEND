@@ -28,9 +28,8 @@ export const getProfileById = async (id: string): Promise<ServiceResult<Profile>
 
 export const updateProfile = async (id: string, profileData: Partial<Profile>): Promise<ServiceResult<Profile>> => {
   try {
-    // 1. Extraemos los campos sensibles que NO deben enviarse en el UPDATE de Supabase
-    // para evitar errores de integridad o de "column not found"
-    const { created_at, ...dataToUpdate } = profileData as any;
+    // Exclude immutable field from UPDATE payload.
+    const { created_at, ...dataToUpdate }: Partial<Profile> = profileData;
 
     // 2. Llamamos al repositorio para ejecutar la actualización
     const updatedData = await updateProfileById(id, dataToUpdate);

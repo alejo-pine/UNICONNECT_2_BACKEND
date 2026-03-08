@@ -1,21 +1,11 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { supabase } from '../utils/supabaseClient';
 import { env } from '../config/env';
 import {
-  createPendingOnboardingForProfile,
-  getOnboardingStateByProfileId,
-} from '../repositories/onboardingRepository';
-
-const PROFILE_FIELDS =
-  'id, auth0_id, email, name, avatar_url, career, semester, phone_number, created_at';
-
-interface ProfileRecord {
-  id: string;
-  auth0_id: string;
-  email: string;
-  name: string;
-}
+  getOnboardingStatusByProfileId,
+  markNewProfileOnboardingRequired,
+} from '../services/onboardingService';
+import { syncAuthProfileByIdentity, SyncedAuthProfile } from '../services/authService';
 
 type RequestContextSource = Pick<Request, 'method' | 'path' | 'get'>;
 
@@ -36,7 +26,7 @@ const buildRequestContext = (req: RequestContextSource): Record<string, string |
   userAgent: req.get('user-agent'),
 });
 
-const emitSessionToken = (profile: ProfileRecord): string => {
+const emitSessionToken = (profile: SyncedAuthProfile): string => {
   const nowSeconds = Math.floor(Date.now() / 1000);
 
   return jwt.sign(
@@ -103,12 +93,20 @@ const resolveNeedsOnboarding = async (
   created: boolean
 ): Promise<boolean> => {
   if (created) {
-    await createPendingOnboardingForProfile(profileId);
+    const onboardingCreationResult = await markNewProfileOnboardingRequired(profileId);
+    if (onboardingCreationResult.error) {
+      throw new Error(onboardingCreationResult.error);
+    }
     return true;
   }
 
-  const onboardingState = await getOnboardingStateByProfileId(profileId);
-  return onboardingState ? onboardingState.onboarding_required : false;
+  const onboardingStatusResult = await getOnboardingStatusByProfileId(profileId);
+
+  if (onboardingStatusResult.error || !onboardingStatusResult.data) {
+    throw new Error(onboardingStatusResult.error ?? 'Failed to get onboarding status');
+  }
+
+  return onboardingStatusResult.data.needsOnboarding;
 };
 
 export const syncAuthProfile = async (
@@ -157,112 +155,27 @@ export const syncAuthProfile = async (
       return;
     }
 
-    const { data: profileByAuth0Id, error: profileByAuth0IdError } = await supabase
-      .from('profile')
-      .select(PROFILE_FIELDS)
-      .eq('auth0_id', normalizedAuth0Id)
-      .maybeSingle();
+    const syncResult = await syncAuthProfileByIdentity({
+      auth0Id: normalizedAuth0Id,
+      email: normalizedEmail,
+      name: normalizedName,
+    });
 
-    if (profileByAuth0IdError) {
-      console.error('[authController.syncAuthProfile] Supabase SELECT error', {
-        message: profileByAuth0IdError.message,
-        details: profileByAuth0IdError.details,
-        hint: profileByAuth0IdError.hint,
-        code: profileByAuth0IdError.code,
+    if (syncResult.error || !syncResult.data) {
+      console.error('[authController.syncAuthProfile] Auth sync service error', {
+        message: syncResult.error,
         ...requestContext,
-        error: profileByAuth0IdError,
       });
-      throw new Error(profileByAuth0IdError.message);
+
+      res.status(syncResult.statusCode).json({
+        error: 'Error interno del servidor al sincronizar autenticacion',
+        code: 'AUTH_SYNC_FAILED',
+      });
+      return;
     }
 
-    let resolvedProfile = profileByAuth0Id as ProfileRecord | null;
-    let created = false;
-
-    if (!resolvedProfile) {
-      const { data: profileByEmail, error: profileByEmailError } = await supabase
-        .from('profile')
-        .select(PROFILE_FIELDS)
-        .eq('email', normalizedEmail)
-        .maybeSingle();
-
-      if (profileByEmailError) {
-        console.error('[authController.syncAuthProfile] Supabase SELECT by email error', {
-          message: profileByEmailError.message,
-          details: profileByEmailError.details,
-          hint: profileByEmailError.hint,
-          code: profileByEmailError.code,
-          ...requestContext,
-          error: profileByEmailError,
-        });
-        throw new Error(profileByEmailError.message);
-      }
-
-      resolvedProfile = profileByEmail as ProfileRecord | null;
-    }
-
-    if (resolvedProfile) {
-      const updates: Partial<Pick<ProfileRecord, 'auth0_id' | 'email' | 'name'>> = {};
-
-      if (resolvedProfile.auth0_id !== normalizedAuth0Id) {
-        updates.auth0_id = normalizedAuth0Id;
-      }
-
-      if (resolvedProfile.email !== normalizedEmail) {
-        updates.email = normalizedEmail;
-      }
-
-      if (resolvedProfile.name !== normalizedName) {
-        updates.name = normalizedName;
-      }
-
-      if (Object.keys(updates).length > 0) {
-        const { data: updatedProfile, error: updateError } = await supabase
-          .from('profile')
-          .update(updates)
-          .eq('id', resolvedProfile.id)
-          .select(PROFILE_FIELDS)
-          .single();
-
-        if (updateError) {
-          console.error('[authController.syncAuthProfile] Supabase UPDATE error', {
-            message: updateError.message,
-            details: updateError.details,
-            hint: updateError.hint,
-            code: updateError.code,
-            ...requestContext,
-            error: updateError,
-          });
-          throw new Error(updateError.message);
-        }
-
-        resolvedProfile = updatedProfile as ProfileRecord;
-      }
-    } else {
-      const { data: createdProfile, error: insertError } = await supabase
-        .from('profile')
-        .insert({
-          auth0_id: normalizedAuth0Id,
-          email: normalizedEmail,
-          name: normalizedName,
-        })
-        .select(PROFILE_FIELDS)
-        .single();
-
-      if (insertError) {
-        console.error('[authController.syncAuthProfile] Supabase INSERT error', {
-          message: insertError.message,
-          details: insertError.details,
-          hint: insertError.hint,
-          code: insertError.code,
-          ...requestContext,
-          error: insertError,
-        });
-        throw new Error(insertError.message);
-      }
-
-      resolvedProfile = createdProfile as ProfileRecord;
-      created = true;
-    }
+    const resolvedProfile: SyncedAuthProfile = syncResult.data.profile;
+    const created = syncResult.data.created;
 
     const needsOnboarding = await resolveNeedsOnboarding(resolvedProfile.id, created);
     const token = emitSessionToken(resolvedProfile);
