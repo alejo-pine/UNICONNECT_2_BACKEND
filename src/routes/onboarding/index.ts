@@ -6,22 +6,23 @@ import {
   saveOnboardingContact,
   saveOnboardingStepOne,
 } from '../../controllers/onboardingController';
+import { asyncHandler } from '../../utils/controller';
 
 const router: Router = Router();
 
 // GET /api/onboarding/status
-router.get('/status', getOnboardingStatus);
+router.get('/status', asyncHandler(getOnboardingStatus));
 
 // GET /api/onboarding/programs?search=ingenieria&limit=20
-router.get('/programs', getPrograms);
+router.get('/programs', asyncHandler(getPrograms));
 
 // POST /api/onboarding/complete
-router.post('/complete', completeOnboarding);
+router.post('/complete', asyncHandler(completeOnboarding));
 
 // POST /api/onboarding/step-1
-router.post('/step-1', saveOnboardingStepOne);
+router.post('/step-1', asyncHandler(saveOnboardingStepOne));
 
 // PATCH /api/onboarding/step-1/contact
-router.patch('/step-1/contact', saveOnboardingContact);
+router.patch('/step-1/contact', asyncHandler(saveOnboardingContact));
 
 export default router;

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { getAllSubjects, getSubjectById as fetchSubjectById } from '../services/subjectService';
+import { sendServiceResult } from '../utils/controller';
 
 /**
  * GET /api/subjects
@@ -22,13 +23,7 @@ export const getSubjects = async (req: Request, res: Response): Promise<void> =>
     limit,
     program,
   });
-
-  if (result.error) {
-    res.status(result.statusCode).json({ error: result.error, statusCode: result.statusCode });
-    return;
-  }
-
-  res.status(200).json({ data: result.data });
+  sendServiceResult(res, result, 200);
 };
 
 /**
@@ -42,11 +37,5 @@ export const getSubjectById = async (
   const { id } = req.params;
 
   const result = await fetchSubjectById(id);
-
-  if (result.error) {
-    res.status(result.statusCode).json({ error: result.error, statusCode: result.statusCode });
-    return;
-  }
-
-  res.status(200).json({ data: result.data });
+  sendServiceResult(res, result, 200);
 };

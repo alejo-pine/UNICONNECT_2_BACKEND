@@ -1,6 +1,7 @@
 import { RequestHandler } from 'express';
 import { AuthenticatedRequest } from '../types/common';
 import { getClassmatesBySubject } from '../services/studentService';
+import { sendServiceResult } from '../utils/controller';
 
 /**
  * GET /api/students/classmates/:subjectId
@@ -15,11 +16,5 @@ export const getClassmates: RequestHandler<{ subjectId: string }> = async (
   const currentProfileId = (req as unknown as AuthenticatedRequest).user.id;
 
   const result = await getClassmatesBySubject(subjectId, currentProfileId);
-
-  if (result.error) {
-    res.status(result.statusCode).json({ error: result.error, statusCode: result.statusCode });
-    return;
-  }
-
-  res.status(200).json({ data: result.data });
+  sendServiceResult(res, result, 200);
 };

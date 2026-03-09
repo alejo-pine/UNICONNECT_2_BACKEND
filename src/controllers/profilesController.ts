@@ -4,31 +4,20 @@ import {
   getAllProfiles,
   getProfileById as fetchProfileById,
   uploadAvatarForProfile,
-  updateProfile as updateProfileService, // <--- Añadir esta
+  updateProfile as updateProfileService,
 } from '../services/profileService';
+import { sendServiceResult } from '../utils/controller';
 
-export const getProfiles = async (req: Request, res: Response): Promise<void> => {
+export const getProfiles = async (_req: Request, res: Response): Promise<void> => {
   const result = await getAllProfiles();
-
-  if (result.error) {
-    res.status(result.statusCode).json({ error: result.error, statusCode: result.statusCode });
-    return;
-  }
-
-  res.status(200).json({ data: result.data });
+  sendServiceResult(res, result, 200);
 };
 
 export const getProfileById = async (req: Request<{ id: string }>, res: Response): Promise<void> => {
   const { id } = req.params;
 
   const result = await fetchProfileById(id);
-
-  if (result.error) {
-    res.status(result.statusCode).json({ error: result.error, statusCode: result.statusCode });
-    return;
-  }
-
-  res.status(200).json({ data: result.data });
+  sendServiceResult(res, result, 200);
 };
 
 export const updateProfile = async (req: Request<{ id: string }>, res: Response): Promise<void> => {
@@ -36,13 +25,7 @@ export const updateProfile = async (req: Request<{ id: string }>, res: Response)
   const profileData = req.body; // Aquí llegan los datos desde el frontend
 
   const result = await updateProfileService(id, profileData);
-
-  if (result.error) {
-    res.status(result.statusCode).json({ error: result.error, statusCode: result.statusCode });
-    return;
-  }
-
-  res.status(200).json({ data: result.data });
+  sendServiceResult(res, result, 200);
 };
 
 type AvatarFilesPayload = {
@@ -75,7 +58,7 @@ export const uploadAvatar = async (req: Request<{ id: string }>, res: Response):
   });
 
   if (result.error) {
-    res.status(result.statusCode).json({ error: result.error, statusCode: result.statusCode });
+    sendServiceResult(res, result);
     return;
   }
 

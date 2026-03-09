@@ -7,6 +7,7 @@ import {
   saveOnboardingStepOneByProfileId,
 } from '../services/onboardingService';
 import { AuthenticatedRequest } from '../types/common';
+import { sendServiceResult } from '../utils/controller';
 
 interface CompleteOnboardingBody {
   skipped?: boolean;
@@ -61,16 +62,7 @@ export const getOnboardingStatus = async (
   const profileId = (req as AuthenticatedRequest).user.id;
 
   const result = await getOnboardingStatusByProfileId(profileId);
-
-  if (result.error) {
-    res.status(result.statusCode).json({
-      error: result.error,
-      statusCode: result.statusCode,
-    });
-    return;
-  }
-
-  res.status(200).json({ data: result.data });
+  sendServiceResult(res, result, 200);
 };
 
 export const getPrograms = async (
@@ -83,15 +75,12 @@ export const getPrograms = async (
 
   const result = await getOnboardingPrograms(search || undefined, limit);
 
+  const isEmpty = (result.data ?? []).length === 0;
+
   if (result.error) {
-    res.status(result.statusCode).json({
-      error: result.error,
-      statusCode: result.statusCode,
-    });
+    sendServiceResult(res, result);
     return;
   }
-
-  const isEmpty = (result.data ?? []).length === 0;
 
   res.status(200).json({
     data: result.data,
@@ -109,16 +98,7 @@ export const completeOnboarding = async (
   const skipped = req.body?.skipped === true;
 
   const result = await completeOnboardingByProfileId(profileId, skipped);
-
-  if (result.error) {
-    res.status(result.statusCode).json({
-      error: result.error,
-      statusCode: result.statusCode,
-    });
-    return;
-  }
-
-  res.status(200).json({ data: result.data });
+  sendServiceResult(res, result, 200);
 };
 
 export const saveOnboardingStepOne = async (
@@ -167,16 +147,7 @@ export const saveOnboardingStepOne = async (
     semester: rawSemester,
     phoneNumber: rawPhone,
   });
-
-  if (result.error) {
-    res.status(result.statusCode).json({
-      error: result.error,
-      statusCode: result.statusCode,
-    });
-    return;
-  }
-
-  res.status(200).json({ data: result.data });
+  sendServiceResult(res, result, 200);
 };
 
 export const saveOnboardingContact = async (
@@ -200,14 +171,5 @@ export const saveOnboardingContact = async (
   const result = await saveOnboardingContactByProfileId(profileId, {
     phoneNumber: parsedBody.phoneNumber,
   });
-
-  if (result.error) {
-    res.status(result.statusCode).json({
-      error: result.error,
-      statusCode: result.statusCode,
-    });
-    return;
-  }
-
-  res.status(200).json({ data: result.data });
+  sendServiceResult(res, result, 200);
 };

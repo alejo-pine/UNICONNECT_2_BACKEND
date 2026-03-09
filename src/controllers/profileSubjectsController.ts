@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as service from '../services/profileSubjectsService';
 import { getSubjectsInfoByProfile } from '../services/profileSubjectsService';
+import { sendServiceResult } from '../utils/controller';
 
 interface ProfileSubjectBody {
   profile_id?: unknown;
@@ -29,11 +30,7 @@ export const getSubjectsByProfile = async (req: Request<{ profile_id: string }>,
   }
 
   const result = await getSubjectsInfoByProfile(profile_id);
-  if (result.error) {
-    res.status(result.statusCode).json({ error: result.error, statusCode: result.statusCode });
-    return;
-  }
-  res.status(200).json({ data: result.data });
+  sendServiceResult(res, result, 200);
 };
 
 
@@ -51,11 +48,7 @@ export const addSubjectToProfileController = async (req: Request, res: Response)
   }
 
   const result = await service.addSubject(profile_id, subject_id);
-  if (result.error) {
-    res.status(result.statusCode).json({ error: result.error, statusCode: result.statusCode });
-    return;
-  }
-  res.status(result.statusCode).json({ data: result.data });
+  sendServiceResult(res, result);
 };
 
 
@@ -73,9 +66,5 @@ export const removeSubjectFromProfileController = async (req: Request, res: Resp
   }
 
   const result = await service.removeSubject(profile_id, subject_id);
-  if (result.error) {
-    res.status(result.statusCode).json({ error: result.error, statusCode: result.statusCode });
-    return;
-  }
-  res.status(result.statusCode).json({ data: result.data });
+  sendServiceResult(res, result);
 };
