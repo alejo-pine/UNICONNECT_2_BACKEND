@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response, Router } from 'express';
 import multer from 'multer';
+import { promisify } from 'node:util';
 import {
 	getProfiles,
 	getProfileById,
@@ -17,21 +18,19 @@ const avatarUpload = multer({
 	},
 });
 
-const runAvatarUpload = (req: Request, res: Response): Promise<void> =>
-	new Promise((resolve, reject) => {
-		avatarUpload.fields([
-			{ name: 'file', maxCount: 1 },
-			{ name: 'avatar', maxCount: 1 },
-			{ name: 'image', maxCount: 1 },
-		])(req, res, (err: unknown): void => {
-			if (err) {
-				reject(err);
-				return;
-			}
+const avatarUploadHandler = avatarUpload.fields([
+	{ name: 'file', maxCount: 1 },
+	{ name: 'avatar', maxCount: 1 },
+	{ name: 'image', maxCount: 1 },
+]);
 
-			resolve();
-		});
-	});
+type MulterUpload = (
+	req: Request,
+	res: Response,
+	callback: (error?: unknown) => void
+) => void;
+
+const runAvatarUpload = promisify(avatarUploadHandler as MulterUpload);
 
 const avatarUploadMiddleware = async (
 	req: Request,
