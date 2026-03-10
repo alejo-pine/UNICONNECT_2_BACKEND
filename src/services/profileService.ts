@@ -1,5 +1,25 @@
-import { findAllProfiles, findProfileById, updateProfileById } from '../repositories/profileRepository';
+import {
+  findAllProfiles,
+  findProfileById,
+  updateProfileAvatarUrl,
+  updateProfileById,
+  uploadProfileAvatar,
+} from '../repositories/profileRepository';
 import { Profile, ServiceResult } from '../types/common';
+
+const ALLOWED_AVATAR_MIME_TYPES = new Set<string>([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+]);
+
+export interface UploadAvatarInput {
+  readonly buffer: Buffer;
+  readonly mimeType: string;
+}
 
 export const getAllProfiles = async (): Promise<ServiceResult<Profile[]>> => {
   try {
@@ -28,9 +48,8 @@ export const getProfileById = async (id: string): Promise<ServiceResult<Profile>
 
 export const updateProfile = async (id: string, profileData: Partial<Profile>): Promise<ServiceResult<Profile>> => {
   try {
-    // 1. Extraemos los campos sensibles que NO deben enviarse en el UPDATE de Supabase
-    // para evitar errores de integridad o de "column not found"
-    const { created_at, ...dataToUpdate } = profileData as any;
+    // Exclude immutable field from UPDATE payload.
+    const { created_at, ...dataToUpdate }: Partial<Profile> = profileData;
 
     // 2. Llamamos al repositorio para ejecutar la actualización
     const updatedData = await updateProfileById(id, dataToUpdate);
@@ -60,6 +79,58 @@ export const updateProfile = async (id: string, profileData: Partial<Profile>): 
       data: null, 
       error: 'Error interno del servidor al intentar actualizar el perfil', 
       statusCode: 500 
+    };
+  }
+};
+
+export const uploadAvatarForProfile = async (
+  profileId: string,
+  authenticatedProfileId: string,
+  file: UploadAvatarInput
+): Promise<ServiceResult<{ url: string }>> => {
+  try {
+    if (profileId !== authenticatedProfileId) {
+      return {
+        data: null,
+        error: 'No autorizado para actualizar este avatar',
+        statusCode: 403,
+      };
+    }
+
+    const normalizedMimeType = file.mimeType.toLowerCase();
+    if (!ALLOWED_AVATAR_MIME_TYPES.has(normalizedMimeType)) {
+      return {
+        data: null,
+        error: 'Formato de imagen no soportado',
+        statusCode: 400,
+      };
+    }
+
+    const profile = await findProfileById(profileId);
+    if (!profile) {
+      return {
+        data: null,
+        error: 'Profile not found',
+        statusCode: 404,
+      };
+    }
+
+    const publicUrl = await uploadProfileAvatar(profileId, file.buffer, normalizedMimeType);
+    await updateProfileAvatarUrl(profileId, publicUrl);
+
+    return {
+      data: { url: publicUrl },
+      error: null,
+      statusCode: 200,
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Error uploading avatar';
+    console.error(`[profileService.uploadAvatarForProfile] ID: ${profileId} | Error:`, message);
+
+    return {
+      data: null,
+      error: 'Error interno del servidor al subir avatar',
+      statusCode: 500,
     };
   }
 };

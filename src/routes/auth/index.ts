@@ -1,6 +1,7 @@
 import { Request, Response, Router } from 'express';
 import { syncAuthProfile } from '../../controllers/authController';
 import { requireAuth0Jwt } from '../../middlewares/auth0Jwt';
+import { asyncHandler } from '../../utils/controller';
 
 const router: Router = Router();
 
@@ -25,6 +26,6 @@ router.get('/status', (req: Request, res: Response): void => {
 	});
 });
 
-router.post('/sync', requireJsonContentType, requireAuth0Jwt, syncAuthProfile);
+router.post('/sync', requireJsonContentType, requireAuth0Jwt, asyncHandler(syncAuthProfile));
 
 export default router;

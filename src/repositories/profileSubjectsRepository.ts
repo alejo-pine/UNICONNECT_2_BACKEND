@@ -1,6 +1,17 @@
 import { supabase } from '../utils/supabaseClient';
+import { Subject } from '../types/common';
 
 const TABLE = 'profile_subject';
+
+interface ProfileSubjectRecord {
+  profile_id: string;
+  subject_id: string;
+  created_at: string;
+}
+
+interface ProfileSubjectWithSubjectRow {
+  subject: Subject[] | null;
+}
 
 
 export const findSubjectsByProfile = async (profile_id: string) => {
@@ -10,7 +21,7 @@ export const findSubjectsByProfile = async (profile_id: string) => {
     .eq('profile_id', profile_id);
 
   if (error) throw new Error(error.message);
-  return data ?? [];
+  return (data ?? []) as ProfileSubjectRecord[];
 };
 
 
@@ -22,7 +33,7 @@ export const addSubjectToProfile = async (profile_id: string, subject_id: string
     .single();
 
   if (error) throw new Error(error.message);
-  return data;
+  return data as ProfileSubjectRecord;
 };
 
 
@@ -55,6 +66,8 @@ export const findSubjectsInfoByProfile = async (profile_id: string) => {
 
   if (error) throw new Error(error.message);
 
-  // Devuelve solo la información de la materia
-  return (data ?? []).map((row: any) => row.subject);
+  // Return only nested subject rows that exist.
+  return ((data ?? []) as ProfileSubjectWithSubjectRow[])
+    .flatMap((row) => row.subject ?? [])
+    .filter((subject): subject is Subject => subject !== null);
 };

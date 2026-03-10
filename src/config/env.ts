@@ -6,6 +6,7 @@ interface Environment {
   readonly supabaseUrl: string;
   readonly supabaseServiceRoleKey: string;
   readonly supabaseJwtSecret: string;
+  readonly supabaseAvatarsBucket: string;
   readonly allowedDomain: string;
   readonly backendPublicUrl?: string;
   readonly corsAllowedOrigins: string[];
@@ -84,6 +85,13 @@ const parseEnv = (): Environment => {
     errors.push('SUPABASE_JWT_SECRET no está definida');
   } else if (supabaseJwtSecret.length < 20) {
     errors.push('SUPABASE_JWT_SECRET debe tener mínimo 20 caracteres');
+  }
+
+  // SUPABASE_AVATARS_BUCKET
+  const supabaseAvatarsBucketRaw = process.env.SUPABASE_AVATARS_BUCKET?.trim();
+  const supabaseAvatarsBucket = supabaseAvatarsBucketRaw || 'avatars';
+  if (supabaseAvatarsBucket.length === 0) {
+    errors.push('SUPABASE_AVATARS_BUCKET no puede estar vacío');
   }
 
   // ALLOWED_DOMAIN
@@ -215,6 +223,7 @@ const parseEnv = (): Environment => {
     supabaseUrl: supabaseUrl!,
     supabaseServiceRoleKey: supabaseServiceRoleKey!,
     supabaseJwtSecret: supabaseJwtSecret!,
+    supabaseAvatarsBucket,
     allowedDomain: allowedDomain!,
     backendPublicUrl,
     corsAllowedOrigins,
