@@ -1,11 +1,12 @@
 import {
   findAllProfiles,
   findProfileById,
+  findPublicProfileById,
   updateProfileAvatarUrl,
   updateProfileById,
   uploadProfileAvatar,
 } from '../repositories/profileRepository';
-import { Profile, ServiceResult } from '../types/common';
+import { Profile, PublicProfile, ServiceResult } from '../types/common';
 
 const ALLOWED_AVATAR_MIME_TYPES = new Set<string>([
   'image/jpeg',
@@ -43,6 +44,37 @@ export const getProfileById = async (id: string): Promise<ServiceResult<Profile>
     const message = err instanceof Error ? err.message : 'Error fetching profile';
     console.error('[profileService.getProfileById]', message);
     return { data: null, error: 'Error fetching profile', statusCode: 500 };
+  }
+};
+
+export const getPublicProfile = async (id: string): Promise<ServiceResult<PublicProfile>> => {
+  try {
+    const data = await findPublicProfileById(id);
+    if (!data) {
+      return { data: null, error: 'Profile not found', statusCode: 404 };
+    }
+
+    const profileSubjects = data.profile_subject as
+      | { subject: { name: string }[] | null }[]
+      | null;
+
+    const publicProfile: PublicProfile = {
+      full_name: data.name,
+      career: data.career,
+      semester: data.semester,
+      phone_number: data.phone_number,
+      avatar_url: data.avatar_url,
+      subjects: (profileSubjects ?? [])
+        .flatMap((ps) => ps.subject ?? [])
+        .map((s) => s.name)
+        .filter((name): name is string => typeof name === 'string'),
+    };
+
+    return { data: publicProfile, error: null, statusCode: 200 };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Error fetching public profile';
+    console.error('[profileService.getPublicProfile]', message);
+    return { data: null, error: 'Error fetching public profile', statusCode: 500 };
   }
 };
 

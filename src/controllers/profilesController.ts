@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from '../types/common';
 import {
   getAllProfiles,
   getProfileById as fetchProfileById,
+  getPublicProfile as fetchPublicProfile,
   uploadAvatarForProfile,
   updateProfile as updateProfileService,
 } from '../services/profileService';
@@ -17,6 +18,13 @@ export const getProfileById = async (req: Request<{ id: string }>, res: Response
   const { id } = req.params;
 
   const result = await fetchProfileById(id);
+  sendServiceResult(res, result, 200);
+};
+
+export const getPublicProfile = async (req: Request<{ id: string }>, res: Response): Promise<void> => {
+  const { id } = req.params;
+
+  const result = await fetchPublicProfile(id);
   sendServiceResult(res, result, 200);
 };
 

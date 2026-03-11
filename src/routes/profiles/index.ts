@@ -4,6 +4,7 @@ import { promisify } from 'node:util';
 import {
 	getProfiles,
 	getProfileById,
+	getPublicProfile,
 	updateProfile,
 	uploadAvatar,
 } from '../../controllers/profilesController';
@@ -63,6 +64,9 @@ const avatarUploadMiddleware = async (
 
 // GET /api/profiles
 router.get('/', asyncHandler(getProfiles));
+
+// GET /api/profiles/:id/public
+router.get('/:id/public', asyncHandler(getPublicProfile));
 
 // GET /api/profiles/:id
 router.get('/:id', asyncHandler(getProfileById));
