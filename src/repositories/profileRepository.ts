@@ -31,6 +31,32 @@ export const findProfileById = async (id: string): Promise<Profile | null> => {
   return data as Profile;
 };
 
+export const findPublicProfileById = async (id: string) => {
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select(`
+      name,
+      avatar_url,
+      career,
+      semester,
+      phone_number,
+      profile_subject (
+        subject (
+          name
+        )
+      )
+    `)
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return null;
+    throw new Error(error.message);
+  }
+
+  return data;
+};
+
 export const updateProfileById = async (id: string, updates: Partial<Profile>): Promise<Profile | null> => {
   const { data, error } = await supabase
     .from(TABLE)

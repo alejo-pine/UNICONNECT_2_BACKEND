@@ -47,6 +47,16 @@ export interface ClassmateProfile {
   avatar_url: string | null;
 }
 
+/** Public profile projection returned by US-006 */
+export interface PublicProfile {
+  full_name: string;
+  career: string | null;
+  semester: number | null;
+  phone_number: string | null;
+  avatar_url: string | null;
+  subjects: string[];
+}
+
 // ── Standard service result ───────────────────────────────────────────────────
 
 export interface ServiceResult<T> {
