@@ -30,12 +30,41 @@ export interface Subject {
   created_at: string;
 }
 
+export interface Event {
+  id: string;
+  profile_id: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  event_date: string;
+  event_time: string;
+  location: string | null;
+  category: string | null;
+  faculty: string | null;
+  created_at: string;
+}
+
+export interface EventDetail extends Event {
+  organizer_name: string | null;
+}
+
 // ── Projected / UI types ──────────────────────────────────────────────────────
 
 /** Lightweight projection used for subject dropdown autocomplete */
 export interface SubjectSummary {
   id: string;
   name: string;
+}
+
+/** Lightweight projection used for homepage event cards */
+export interface EventCardSummary {
+  id: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  faculty: string | null;
+  event_date: string;
+  event_time: string;
 }
 
 /** Flat classmate profile returned when searching by subject */

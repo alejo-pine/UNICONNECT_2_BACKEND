@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import * as service from '../services/profileSubjectsService';
 import { getSubjectsInfoByProfile } from '../services/profileSubjectsService';
 import { sendServiceResult } from '../utils/controller';
+import { HttpError } from '../utils/httpError';
 
 interface ProfileSubjectBody {
   profile_id?: unknown;
@@ -22,11 +23,7 @@ export const getSubjectsByProfile = async (req: Request<{ profile_id: string }>,
   const profile_id = parseNonEmptyString(req.params.profile_id);
 
   if (!profile_id) {
-    res.status(400).json({
-      error: 'profile_id es obligatorio',
-      statusCode: 400,
-    });
-    return;
+    throw new HttpError(400, 'profile_id es obligatorio');
   }
 
   const result = await getSubjectsInfoByProfile(profile_id);
@@ -40,11 +37,7 @@ export const addSubjectToProfileController = async (req: Request, res: Response)
   const subject_id = parseNonEmptyString(body.subject_id);
 
   if (!profile_id || !subject_id) {
-    res.status(400).json({
-      error: 'profile_id y subject_id son obligatorios',
-      statusCode: 400,
-    });
-    return;
+    throw new HttpError(400, 'profile_id y subject_id son obligatorios');
   }
 
   const result = await service.addSubject(profile_id, subject_id);
@@ -58,11 +51,7 @@ export const removeSubjectFromProfileController = async (req: Request, res: Resp
   const subject_id = parseNonEmptyString(body.subject_id);
 
   if (!profile_id || !subject_id) {
-    res.status(400).json({
-      error: 'profile_id y subject_id son obligatorios',
-      statusCode: 400,
-    });
-    return;
+    throw new HttpError(400, 'profile_id y subject_id son obligatorios');
   }
 
   const result = await service.removeSubject(profile_id, subject_id);

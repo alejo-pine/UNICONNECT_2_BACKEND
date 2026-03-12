@@ -8,6 +8,7 @@ import {
 } from '../services/onboardingService';
 import { AuthenticatedRequest } from '../types/common';
 import { sendServiceResult } from '../utils/controller';
+import { HttpError } from '../utils/httpError';
 
 interface CompleteOnboardingBody {
   skipped?: boolean;
@@ -134,12 +135,11 @@ export const saveOnboardingStepOne = async (
   }
 
   if (Object.keys(validationErrors).length > 0) {
-    res.status(400).json({
-      error: 'Debes completar los campos obligatorios del paso 1.',
-      statusCode: 400,
-      validationErrors,
+    throw new HttpError(400, 'Debes completar los campos obligatorios del paso 1.', {
+      details: {
+        validationErrors,
+      },
     });
-    return;
   }
 
   const result = await saveOnboardingStepOneByProfileId(profileId, {
@@ -158,14 +158,13 @@ export const saveOnboardingContact = async (
   const parsedBody = parseContactBody(req.body ?? {});
 
   if (!parsedBody) {
-    res.status(400).json({
-      error: 'El contacto es obligatorio',
-      statusCode: 400,
-      validationErrors: {
-        phone_number: 'El contacto es obligatorio',
+    throw new HttpError(400, 'El contacto es obligatorio', {
+      details: {
+        validationErrors: {
+          phone_number: 'El contacto es obligatorio',
+        },
       },
     });
-    return;
   }
 
   const result = await saveOnboardingContactByProfileId(profileId, {
