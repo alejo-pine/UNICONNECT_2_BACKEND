@@ -20,6 +20,8 @@ type RequestError = Error & {
   statusCode?: number;
   status?: number;
   headers?: Record<string, string>;
+  code?: string;
+  details?: unknown;
 };
 
 const normalizeRequestError = (err: unknown): RequestError => {
@@ -34,11 +36,20 @@ const normalizeRequestError = (err: unknown): RequestError => {
   if (typeof err === 'object' && err !== null) {
     const maybeStatusCode = (err as { statusCode?: unknown }).statusCode;
     const maybeStatus = (err as { status?: unknown }).status;
+    const maybeCode = (err as { code?: unknown }).code;
+    const maybeDetails = (err as { details?: unknown }).details;
+
     if (typeof maybeStatusCode === 'number') {
       fallback.statusCode = maybeStatusCode;
     }
     if (typeof maybeStatus === 'number') {
       fallback.status = maybeStatus;
+    }
+    if (typeof maybeCode === 'string') {
+      fallback.code = maybeCode;
+    }
+    if (maybeDetails !== undefined) {
+      fallback.details = maybeDetails;
     }
   }
 
@@ -211,6 +222,33 @@ app.use(
   ): void => {
     const requestError = normalizeRequestError(err);
     const statusCode = requestError.statusCode ?? requestError.status ?? 500;
+    const isServerError = statusCode >= 500;
+
+    const responsePayload: {
+      error: string;
+      statusCode: number;
+      code?: string;
+      validationErrors?: unknown;
+      details?: unknown;
+    } = {
+      error: requestError.message,
+      statusCode,
+    };
+
+    if (requestError.code) {
+      responsePayload.code = requestError.code;
+    }
+
+    if (
+      typeof requestError.details === 'object' &&
+      requestError.details !== null &&
+      'validationErrors' in requestError.details
+    ) {
+      const typedDetails = requestError.details as { validationErrors?: unknown };
+      responsePayload.validationErrors = typedDetails.validationErrors;
+    } else if (requestError.details !== undefined && !isServerError) {
+      responsePayload.details = requestError.details;
+    }
 
     if (statusCode === 401) {
       console.error('[Auth0 ERROR RECHAZO]:', requestError.message);
@@ -239,15 +277,18 @@ app.use(
     });
 
     if (env.nodeEnv === 'production') {
-      res.status(statusCode).json({
-        error: 'Error interno del servidor',
-        statusCode,
-      });
+      if (isServerError) {
+        res.status(statusCode).json({
+          error: 'Error interno del servidor',
+          statusCode,
+          code: responsePayload.code,
+        });
+        return;
+      }
+
+      res.status(statusCode).json(responsePayload);
     } else {
-      res.status(statusCode).json({
-        error: requestError.message,
-        statusCode,
-      });
+      res.status(statusCode).json(responsePayload);
     }
 
   }

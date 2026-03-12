@@ -2,6 +2,7 @@ import { Request, Response, Router } from 'express';
 import { syncAuthProfile } from '../../controllers/authController';
 import { requireAuth0Jwt } from '../../middlewares/auth0Jwt';
 import { asyncHandler } from '../../utils/controller';
+import { HttpError } from '../../utils/httpError';
 
 const router: Router = Router();
 
@@ -11,10 +12,7 @@ const requireJsonContentType = (
 	next: (error?: unknown) => void
 ): void => {
 	if (!req.is('application/json')) {
-		res.status(415).json({
-			error: 'Content-Type debe ser application/json',
-			statusCode: 415,
-		});
+		next(new HttpError(415, 'Content-Type debe ser application/json'));
 		return;
 	}
 	next();

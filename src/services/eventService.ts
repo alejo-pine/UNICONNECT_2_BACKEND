@@ -4,6 +4,7 @@ import {
   FindAllEventsOptions,
 } from '../repositories/eventRepository';
 import { EventCardSummary, EventDetail, ServiceResult } from '../types/common';
+import { eventLogger } from '../utils/eventLogger';
 
 export const getAllEvents = async (
   options: FindAllEventsOptions = {}
@@ -13,7 +14,7 @@ export const getAllEvents = async (
     return { data, error: null, statusCode: 200 };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Error fetching events';
-    console.error('[eventService.getAllEvents]', message);
+    eventLogger.error('eventService.getAllEvents', message);
     return { data: null, error: 'Error fetching events', statusCode: 500 };
   }
 };
@@ -22,12 +23,13 @@ export const getEventById = async (id: string): Promise<ServiceResult<EventDetai
   try {
     const data = await findEventById(id);
     if (!data) {
+      eventLogger.warn('eventService.getEventById', 'Event not found', { id });
       return { data: null, error: 'Event not found', statusCode: 404 };
     }
     return { data, error: null, statusCode: 200 };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Error fetching event';
-    console.error('[eventService.getEventById]', message);
+    eventLogger.error('eventService.getEventById', message, { id });
     return { data: null, error: 'Error fetching event', statusCode: 500 };
   }
 };

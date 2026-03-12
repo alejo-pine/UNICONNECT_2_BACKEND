@@ -6,6 +6,7 @@ import {
   markNewProfileOnboardingRequired,
 } from '../services/onboardingService';
 import { syncAuthProfileByIdentity, SyncedAuthProfile } from '../services/authService';
+import { HttpError } from '../utils/httpError';
 
 type RequestContextSource = Pick<Request, 'method' | 'path' | 'get'>;
 
@@ -114,119 +115,75 @@ export const syncAuthProfile = async (
   res: Response
 ): Promise<void> => {
   const requestContext = buildRequestContext(req);
+  const accessToken = extractAuthorizationToken(req.headers.authorization);
+  if (!accessToken) {
+    throw new HttpError(401, 'Token de autenticacion requerido');
+  }
 
+  let userInfo: Auth0UserInfo;
   try {
-    const accessToken = extractAuthorizationToken(req.headers.authorization);
-    if (!accessToken) {
-      res.status(401).json({
-        error: 'Token de autenticacion requerido',
-        statusCode: 401,
-      });
-      return;
-    }
-
-    let userInfo: Auth0UserInfo;
-    try {
-      userInfo = await fetchAuth0UserInfo(accessToken);
-    } catch (error: unknown) {
-      console.error('[authController.syncAuthProfile] Error al consultar /userinfo', {
-        message: error instanceof Error ? error.message : 'Error desconocido',
-        ...requestContext,
-        error,
-      });
-
-      res.status(502).json({
-        error: 'No se pudo obtener el perfil desde Auth0',
-        statusCode: 502,
-      });
-      return;
-    }
-
-    const normalizedAuth0Id = typeof userInfo.sub === 'string' ? userInfo.sub.trim() : '';
-    const normalizedEmail =
-      typeof userInfo.email === 'string' ? userInfo.email.trim().toLowerCase() : '';
-    const normalizedName = typeof userInfo.name === 'string' ? userInfo.name.trim() : '';
-
-    if (!normalizedAuth0Id || !normalizedEmail || !normalizedName) {
-      res.status(401).json({
-        error: 'Token invalido',
-        statusCode: 401,
-      });
-      return;
-    }
-
-    const syncResult = await syncAuthProfileByIdentity({
-      auth0Id: normalizedAuth0Id,
-      email: normalizedEmail,
-      name: normalizedName,
-    });
-
-    if (syncResult.error || !syncResult.data) {
-      console.error('[authController.syncAuthProfile] Auth sync service error', {
-        message: syncResult.error,
-        ...requestContext,
-      });
-
-      res.status(syncResult.statusCode).json({
-        error: 'Error interno del servidor al sincronizar autenticacion',
-        code: 'AUTH_SYNC_FAILED',
-      });
-      return;
-    }
-
-    const resolvedProfile: SyncedAuthProfile = syncResult.data.profile;
-    const created = syncResult.data.created;
-
-    const needsOnboarding = await resolveNeedsOnboarding(resolvedProfile.id, created);
-    const token = emitSessionToken(resolvedProfile);
-    const responseStatus = created ? 201 : 200;
-
-    console.info('[authController.syncAuthProfile] Response sent', {
-      ...requestContext,
-      userId: resolvedProfile.id,
-      tokenIssued: Boolean(token),
-      statusCode: responseStatus,
-      created,
-      needsOnboarding,
-    });
-
-    res.status(responseStatus).json({
-      token,
-      userId: resolvedProfile.id,
-      email: resolvedProfile.email,
-      name: resolvedProfile.name,
-      needsOnboarding,
-      data: {
-        access_token: token,
-        user_id: resolvedProfile.id,
-        needs_onboarding: needsOnboarding,
-      },
-    });
+    userInfo = await fetchAuth0UserInfo(accessToken);
   } catch (error: unknown) {
-    const supabaseLikeError =
-      typeof error === 'object' && error !== null
-        ? (error as {
-            message?: string;
-            details?: string;
-            hint?: string;
-            code?: string;
-          })
-        : null;
-
-    console.error('[authController.syncAuthProfile] Unhandled error', {
-      message:
-        supabaseLikeError?.message ??
-        (error instanceof Error ? error.message : 'Error desconocido'),
-      details: supabaseLikeError?.details,
-      hint: supabaseLikeError?.hint,
-      code: supabaseLikeError?.code,
+    console.error('[authController.syncAuthProfile] Error al consultar /userinfo', {
+      message: error instanceof Error ? error.message : 'Error desconocido',
       ...requestContext,
       error,
     });
+    throw new HttpError(502, 'No se pudo obtener el perfil desde Auth0');
+  }
 
-    res.status(500).json({
-      error: 'Error interno del servidor al sincronizar autenticacion',
+  const normalizedAuth0Id = typeof userInfo.sub === 'string' ? userInfo.sub.trim() : '';
+  const normalizedEmail =
+    typeof userInfo.email === 'string' ? userInfo.email.trim().toLowerCase() : '';
+  const normalizedName = typeof userInfo.name === 'string' ? userInfo.name.trim() : '';
+
+  if (!normalizedAuth0Id || !normalizedEmail || !normalizedName) {
+    throw new HttpError(401, 'Token invalido');
+  }
+
+  const syncResult = await syncAuthProfileByIdentity({
+    auth0Id: normalizedAuth0Id,
+    email: normalizedEmail,
+    name: normalizedName,
+  });
+
+  if (syncResult.error || !syncResult.data) {
+    console.error('[authController.syncAuthProfile] Auth sync service error', {
+      message: syncResult.error,
+      ...requestContext,
+    });
+
+    throw new HttpError(syncResult.statusCode, 'Error interno del servidor al sincronizar autenticacion', {
       code: 'AUTH_SYNC_FAILED',
     });
   }
+
+  const resolvedProfile: SyncedAuthProfile = syncResult.data.profile;
+  const created = syncResult.data.created;
+
+  const needsOnboarding = await resolveNeedsOnboarding(resolvedProfile.id, created);
+  const token = emitSessionToken(resolvedProfile);
+  const responseStatus = created ? 201 : 200;
+
+  console.info('[authController.syncAuthProfile] Response sent', {
+    ...requestContext,
+    userId: resolvedProfile.id,
+    tokenIssued: Boolean(token),
+    statusCode: responseStatus,
+    created,
+    needsOnboarding,
+  });
+
+  res.status(responseStatus).json({
+    token,
+    userId: resolvedProfile.id,
+    email: resolvedProfile.email,
+    name: resolvedProfile.name,
+    needsOnboarding,
+    data: {
+      access_token: token,
+      user_id: resolvedProfile.id,
+      needs_onboarding: needsOnboarding,
+    },
+  });
 };

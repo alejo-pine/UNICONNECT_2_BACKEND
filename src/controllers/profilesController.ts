@@ -8,6 +8,7 @@ import {
   updateProfile as updateProfileService,
 } from '../services/profileService';
 import { sendServiceResult } from '../utils/controller';
+import { HttpError } from '../utils/httpError';
 
 export const getProfiles = async (_req: Request, res: Response): Promise<void> => {
   const result = await getAllProfiles();
@@ -48,16 +49,11 @@ export const uploadAvatar = async (req: Request<{ id: string }>, res: Response):
   const selectedFile = files?.file?.[0] ?? files?.avatar?.[0] ?? files?.image?.[0];
 
   if (!selectedFile) {
-    res.status(400).json({
-      error: 'Archivo requerido en multipart/form-data (file/avatar/image)',
-      statusCode: 400,
-    });
-    return;
+    throw new HttpError(400, 'Archivo requerido en multipart/form-data (file/avatar/image)');
   }
 
   if (!authenticatedProfileId) {
-    res.status(401).json({ error: 'Token de autenticacion requerido', statusCode: 401 });
-    return;
+    throw new HttpError(401, 'Token de autenticacion requerido');
   }
 
   const result = await uploadAvatarForProfile(id, authenticatedProfileId, {
