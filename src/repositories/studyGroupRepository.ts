@@ -4,13 +4,16 @@ import { eventLogger } from '../utils/eventLogger';
 
 const STUDY_GROUPS_TABLE = 'study_group';
 const GROUP_MEMBERS_TABLE = 'group_member';
+const SUBJECTS_TABLE = 'subject';
 
 /**
- * Create a new study group and add the creator as a member in a transactional manner.
- * 1. Insert into study_group table
- * 2. Insert into group_member table with the same creator_id
- *
- * Returns the created study group object.
+ * Create a new study group and add the creator as a member.
+ * Implements rollback logic if member insertion fails.
+ * 
+ * Transaction-like behavior:
+ * 1. Insert into study_group
+ * 2. Insert into group_member
+ * 3. If 2 fails, delete from study_group (rollback)
  */
 export const createStudyGroup = async (
   name: string,
@@ -18,62 +21,90 @@ export const createStudyGroup = async (
   subjectId: string,
   creatorId: string
 ): Promise<StudyGroup> => {
-  // Insert into study_group and get the generated id
-  const { data: studyGroupData, error: studyGroupError } = await supabase
-    .from(STUDY_GROUPS_TABLE)
-    .insert({
-      name,
-      description,
-      subject_id: subjectId,
-      creator_id: creatorId,
-    })
-    .select('id, name, description, subject_id, creator_id, created_at')
-    .single();
+  try {
+    // Insert into study_group and get the generated id
+    const { data: studyGroupData, error: studyGroupError } = await supabase
+      .from(STUDY_GROUPS_TABLE)
+      .insert({
+        name,
+        description,
+        subject_id: subjectId,
+        creator_id: creatorId,
+      })
+      .select('id, name, description, subject_id, creator_id, created_at')
+      .single();
 
-  if (studyGroupError) {
-    throw new Error(`Failed to create study group: ${studyGroupError.message}`);
+    if (studyGroupError) {
+      throw new Error(`Failed to create study group: ${studyGroupError.message}`);
+    }
+
+    if (!studyGroupData) {
+      throw new Error('Study group created but no data returned');
+    }
+
+    const groupId = studyGroupData.id;
+
+    // Now add the creator as a member of the group
+    const { error: memberError } = await supabase
+      .from(GROUP_MEMBERS_TABLE)
+      .insert({
+        group_id: groupId,
+        profile_id: creatorId,
+      })
+      .select('group_id, profile_id, created_at')
+      .single();
+
+    if (memberError) {
+      // Rollback: Delete the study group if member insertion fails
+      eventLogger.warn('studyGroupRepository.createStudyGroup', 'Member insertion failed, rolling back', {
+        groupId,
+        error: memberError.message,
+      });
+
+      const { error: deleteError } = await supabase
+        .from(STUDY_GROUPS_TABLE)
+        .delete()
+        .eq('id', groupId);
+
+      if (deleteError) {
+        eventLogger.error('studyGroupRepository.createStudyGroup', 'Rollback failed, orphaned group', {
+          groupId,
+          deleteError: deleteError.message,
+        });
+      }
+
+      throw new Error(`Failed to add creator as group member: ${memberError.message}`);
+    }
+
+    return studyGroupData as StudyGroup;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    eventLogger.error('studyGroupRepository.createStudyGroup', message, { creatorId, subjectId });
+    throw err;
   }
-
-  if (!studyGroupData) {
-    throw new Error('Study group created but no data returned');
-  }
-
-  const groupId = studyGroupData.id;
-
-  // Now add the creator as a member of the group
-  const { error: memberError } = await supabase
-    .from(GROUP_MEMBERS_TABLE)
-    .insert({
-      group_id: groupId,
-      profile_id: creatorId,
-    })
-    .select('group_id, profile_id, created_at')
-    .single();
-
-  if (memberError) {
-    // If adding member fails, we need to clean up - delete the study group
-    // Note: In production, this should be done atomically if possible
-    throw new Error(`Failed to add creator as group member: ${memberError.message}`);
-  }
-
-  return studyGroupData as StudyGroup;
 };
 
 /**
  * Verify that a subject exists (for validation purposes)
  */
 export const verifySubjectExists = async (subjectId: string): Promise<boolean> => {
-  const { data, error } = await supabase
-    .from('subject')
-    .select('id')
-    .eq('id', subjectId)
-    .maybeSingle();
+  try {
+    const { data, error } = await supabase
+      .from(SUBJECTS_TABLE)
+      .select('id')
+      .eq('id', subjectId)
+      .maybeSingle();
 
-  if (error && error.message !== 'no rows') {
-    throw new Error(`Failed to verify subject: ${error.message}`);
+    if (error && error.message !== 'no rows') {
+      throw new Error(`Failed to verify subject: ${error.message}`);
+    }
+
+    return !!data;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    eventLogger.error('studyGroupRepository.verifySubjectExists', message, { subjectId });
+    throw err;
   }
-
-  return !!data;
 };
 
 /**

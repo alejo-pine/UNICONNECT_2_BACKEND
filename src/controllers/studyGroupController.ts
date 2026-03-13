@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { AuthenticatedRequest } from '../types/common';
 import { createStudyGroupService, getMyStudyGroupsService, getAllStudyGroupsService } from '../services/studyGroupService';
 import { sendServiceResult } from '../utils/controller';
-import { eventLogger } from '../utils/eventLogger';
+import { handleControllerError } from '../utils/studyGroupControllerHelper';
 import { HttpError } from '../utils/httpError';
 
 /**
@@ -27,22 +27,8 @@ export const createStudyGroup = async (
     const result = await createStudyGroupService(req.body, req.user.id);
     sendServiceResult(res, result, 201);
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    eventLogger.error('studyGroupController.createStudyGroup', message, {
-      userId: req.user?.id,
-    });
-
-    if (err instanceof HttpError) {
-      res.status(err.statusCode).json({
-        error: err.message,
-        statusCode: err.statusCode,
-      });
-      return;
-    }
-
-    res.status(500).json({
-      error: 'Internal server error',
-      statusCode: 500,
+    handleControllerError(err, res, 'studyGroupController.createStudyGroup', {
+      userId: (req.user as any)?.id,
     });
   }
 };
@@ -63,22 +49,8 @@ export const getMyStudyGroups = async (
     const result = await getMyStudyGroupsService(req.user.id);
     sendServiceResult(res, result, 200);
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    eventLogger.error('studyGroupController.getMyStudyGroups', message, {
-      userId: req.user?.id,
-    });
-
-    if (err instanceof HttpError) {
-      res.status(err.statusCode).json({
-        error: err.message,
-        statusCode: err.statusCode,
-      });
-      return;
-    }
-
-    res.status(500).json({
-      error: 'Internal server error',
-      statusCode: 500,
+    handleControllerError(err, res, 'studyGroupController.getMyStudyGroups', {
+      userId: (req.user as any)?.id,
     });
   }
 };
@@ -99,20 +71,6 @@ export const getAllStudyGroups = async (
     const result = await getAllStudyGroupsService(limit);
     sendServiceResult(res, result, 200);
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    eventLogger.error('studyGroupController.getAllStudyGroups', message);
-
-    if (err instanceof HttpError) {
-      res.status(err.statusCode).json({
-        error: err.message,
-        statusCode: err.statusCode,
-      });
-      return;
-    }
-
-    res.status(500).json({
-      error: 'Internal server error',
-      statusCode: 500,
-    });
+    handleControllerError(err, res, 'studyGroupController.getAllStudyGroups', { limit: 50 });
   }
 };
