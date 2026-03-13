@@ -86,6 +86,37 @@ export interface PublicProfile {
   subjects: string[];
 }
 
+// ── Study Groups (US-007) ─────────────────────────────────────────────────────
+
+export interface StudyGroup {
+  id: string;
+  name: string;
+  description: string;
+  subject_id: string;
+  creator_id: string;
+  created_at: string;
+}
+
+export interface GroupMember {
+  group_id: string;
+  profile_id: string;
+  created_at: string;
+}
+
+export interface CreateStudyGroupDTO {
+  name: string;
+  description: string;
+  subject_id: string;
+}
+
+export interface StudyGroupWithSubject extends StudyGroup {
+  subject?: SubjectSummary;
+}
+
+export interface StudyGroupResponse extends StudyGroupWithSubject {
+  is_admin: boolean;
+}
+
 // ── Standard service result ───────────────────────────────────────────────────
 
 export interface ServiceResult<T> {

@@ -13,6 +13,7 @@ import eventsRouter from './routes/events/index';
 import profileSubjectsRouter from './routes/profile-subjects/profileSubjectsRoutes';
 import onboardingRouter from './routes/onboarding/index';
 import authRouter from './routes/auth/index';
+import studyGroupsRouter from './routes/study-groups/index';
 import app from './app';
 import { Server } from 'http';
 
@@ -196,6 +197,7 @@ apiRouter.use('/students', studentsRouter);
 apiRouter.use('/events', eventsRouter);
 apiRouter.use('/profile-subjects', profileSubjectsRouter);
 apiRouter.use('/onboarding', onboardingRouter);
+apiRouter.use('/study-groups', studyGroupsRouter);
 app.use('/api', authMiddleware, apiRouter);
 
 // ============================================================================
