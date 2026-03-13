@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../types/common';
-import { createStudyGroupService, getMyStudyGroupsService } from '../services/studyGroupService';
+import { createStudyGroupService, getMyStudyGroupsService, getAllStudyGroupsService } from '../services/studyGroupService';
 import { sendServiceResult } from '../utils/controller';
 import { eventLogger } from '../utils/eventLogger';
 import { HttpError } from '../utils/httpError';
@@ -67,6 +67,40 @@ export const getMyStudyGroups = async (
     eventLogger.error('studyGroupController.getMyStudyGroups', message, {
       userId: req.user?.id,
     });
+
+    if (err instanceof HttpError) {
+      res.status(err.statusCode).json({
+        error: err.message,
+        statusCode: err.statusCode,
+      });
+      return;
+    }
+
+    res.status(500).json({
+      error: 'Internal server error',
+      statusCode: 500,
+    });
+  }
+};
+
+/**
+ * GET /api/study-groups
+ * Returns all public study groups (for discovery/browsing).
+ * Optional query param: ?limit=50
+ */
+export const getAllStudyGroups = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const limitRaw = typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : 50;
+    const limit = !isNaN(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 500) : 50;
+
+    const result = await getAllStudyGroupsService(limit);
+    sendServiceResult(res, result, 200);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    eventLogger.error('studyGroupController.getAllStudyGroups', message);
 
     if (err instanceof HttpError) {
       res.status(err.statusCode).json({

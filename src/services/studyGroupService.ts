@@ -7,6 +7,7 @@ import {
 import {
   createStudyGroup,
   findStudyGroupsByProfileId,
+  findAllStudyGroups,
   verifySubjectExists,
 } from '../repositories/studyGroupRepository';
 import { eventLogger } from '../utils/eventLogger';
@@ -113,6 +114,12 @@ export const getMyStudyGroupsService = async (
   try {
     const data: StudyGroupWithSubject[] = await findStudyGroupsByProfileId(profileId);
 
+    eventLogger.info('studyGroupService.getMyStudyGroupsService', 'Study groups fetched successfully', {
+      profileId,
+      count: data.length,
+      hasSubjectData: data.every((g) => g.subject),
+    });
+
     return {
       data: data.map((group) => ({ ...group, is_admin: group.creator_id === profileId })),
       error: null,
@@ -123,6 +130,39 @@ export const getMyStudyGroupsService = async (
     eventLogger.error('studyGroupService.getMyStudyGroupsService', message, {
       profileId,
     });
+
+    return {
+      data: null,
+      error: 'Failed to fetch study groups',
+      statusCode: 500,
+    };
+  }
+};
+
+/**
+ * Service to fetch all public study groups.
+ * Typically used for discovery/browsing functionality.
+ */
+export const getAllStudyGroupsService = async (
+  limit: number = 50
+): Promise<ServiceResult<StudyGroupResponse[]>> => {
+  try {
+    const data: StudyGroupWithSubject[] = await findAllStudyGroups(limit);
+
+    eventLogger.info('studyGroupService.getAllStudyGroupsService', 'All study groups fetched', {
+      limit,
+      count: data.length,
+      hasSubjectData: data.every((g) => g.subject),
+    });
+
+    return {
+      data: data.map((group) => ({ ...group, is_admin: false })),
+      error: null,
+      statusCode: 200,
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch study groups';
+    eventLogger.error('studyGroupService.getAllStudyGroupsService', message, { limit });
 
     return {
       data: null,

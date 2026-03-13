@@ -1,5 +1,6 @@
 import { supabase } from '../utils/supabaseClient';
 import { GroupMember, StudyGroup, StudyGroupWithSubject, SubjectSummary } from '../types/common';
+import { eventLogger } from '../utils/eventLogger';
 
 const STUDY_GROUPS_TABLE = 'study_group';
 const GROUP_MEMBERS_TABLE = 'group_member';
@@ -75,29 +76,101 @@ export const verifySubjectExists = async (subjectId: string): Promise<boolean> =
   return !!data;
 };
 
+/**
+ * Fetch study groups for a specific profile via group_member join.
+ * Includes subject details for each group.
+ * 
+ * Query Strategy:
+ * 1. Select from group_member table where profile_id matches
+ * 2. Join with study_group using group_id foreign key
+ * 3. Join with subject using subject_id foreign key within study_group
+ * 4. Map response to StudyGroupWithSubject with subject details
+ */
 export const findStudyGroupsByProfileId = async (
   profileId: string
 ): Promise<StudyGroupWithSubject[]> => {
-  const { data, error } = await supabase
-    .from(GROUP_MEMBERS_TABLE)
-    .select(
-      'study_group:group_id (id, name, description, subject_id, creator_id, created_at, subject:subject_id (id, name))'
-    )
-    .eq('profile_id', profileId);
+  try {
+    const { data, error } = await supabase
+      .from(GROUP_MEMBERS_TABLE)
+      .select(
+        `
+        study_group!group_id(
+          id,
+          name,
+          description,
+          subject_id,
+          creator_id,
+          created_at,
+          subject!subject_id(
+            id,
+            name
+          )
+        )
+        `
+      )
+      .eq('profile_id', profileId);
 
-  if (error) {
-    throw new Error(`Failed to fetch study groups: ${error.message}`);
+    if (error) {
+      throw new Error(`Database query failed: ${error.message}`);
+    }
+
+    // Type-safe extraction and mapping
+    // Note: Supabase returns arrays for all relations, even 1:1
+    const rows = (data ?? []) as Array<{
+      study_group: Array<StudyGroup & { subject: Array<SubjectSummary> }>;
+    }>;
+
+    const result = rows
+      .flatMap((row) => row.study_group || [])
+      .map((group) => ({
+        ...group,
+        subject: Array.isArray(group.subject) && group.subject.length > 0 ? group.subject[0] : undefined,
+      })) as StudyGroupWithSubject[];
+
+    return result;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    throw new Error(`findStudyGroupsByProfileId failed: ${message}`);
   }
+};
 
-  const rows = (data ?? []) as Array<{
-    study_group: Array<StudyGroup & { subject?: SubjectSummary[] | null }>;
-  }>;
+/**
+ * Fetch all study groups (public endpoint, optional pagination)
+ * Includes subject details for each group.
+ */
+export const findAllStudyGroups = async (limit: number = 50): Promise<StudyGroupWithSubject[]> => {
+  try {
+    const { data, error } = await supabase
+      .from(STUDY_GROUPS_TABLE)
+      .select(
+        `
+        id,
+        name,
+        description,
+        subject_id,
+        creator_id,
+        created_at,
+        subject!subject_id(
+          id,
+          name
+        )
+        `
+      )
+      .limit(limit);
 
-  return rows
-    .flatMap((row) => row.study_group)
-    .filter((group): group is StudyGroup & { subject?: SubjectSummary[] | null } => Boolean(group))
-    .map((group) => ({
+    if (error) {
+      throw new Error(`Database query failed: ${error.message}`);
+    }
+
+    // Map to normalize subject array to single object or undefined
+    const result = (data ?? []).map((group: any) => ({
       ...group,
       subject: Array.isArray(group.subject) && group.subject.length > 0 ? group.subject[0] : undefined,
     })) as StudyGroupWithSubject[];
+
+    return result;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    throw new Error(`findAllStudyGroups failed: ${message}`);
+  }
 };
