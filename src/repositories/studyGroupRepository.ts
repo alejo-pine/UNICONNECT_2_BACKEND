@@ -81,7 +81,7 @@ export const findStudyGroupsByProfileId = async (
   const { data, error } = await supabase
     .from(GROUP_MEMBERS_TABLE)
     .select(
-      'group_id, profile_id, created_at, study_group:group_id (id, name, description, subject_id, creator_id, created_at, subject:subject_id (id, name))'
+      'study_group:group_id (id, name, description, subject_id, creator_id, created_at, subject:subject_id (id, name))'
     )
     .eq('profile_id', profileId);
 
@@ -89,25 +89,15 @@ export const findStudyGroupsByProfileId = async (
     throw new Error(`Failed to fetch study groups: ${error.message}`);
   }
 
-  const rows = (data ?? []) as Array<
-    GroupMember & {
-      study_group: Array<StudyGroup & { subject?: SubjectSummary | SubjectSummary[] | null }>;
-    }
-  >;
+  const rows = (data ?? []) as Array<{
+    study_group: Array<StudyGroup & { subject?: SubjectSummary[] | null }>;
+  }>;
 
   return rows
     .flatMap((row) => row.study_group)
-    .filter((group): group is StudyGroup & { subject?: SubjectSummary | SubjectSummary[] | null } =>
-      Boolean(group)
-    )
-    .map((group) => {
-      const subjectValue = Array.isArray(group.subject)
-        ? group.subject[0]
-        : group.subject ?? undefined;
-
-      return {
-        ...group,
-        subject: subjectValue,
-      } as StudyGroupWithSubject;
-    });
+    .filter((group): group is StudyGroup & { subject?: SubjectSummary[] | null } => Boolean(group))
+    .map((group) => ({
+      ...group,
+      subject: Array.isArray(group.subject) && group.subject.length > 0 ? group.subject[0] : undefined,
+    })) as StudyGroupWithSubject[];
 };

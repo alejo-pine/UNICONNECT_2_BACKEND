@@ -1,8 +1,9 @@
 import { Response } from 'express';
-import { AuthenticatedRequest, CreateStudyGroupDTO } from '../types/common';
+import { AuthenticatedRequest } from '../types/common';
 import { createStudyGroupService, getMyStudyGroupsService } from '../services/studyGroupService';
 import { sendServiceResult } from '../utils/controller';
 import { eventLogger } from '../utils/eventLogger';
+import { HttpError } from '../utils/httpError';
 
 /**
  * POST /api/study-groups
@@ -20,39 +21,24 @@ export const createStudyGroup = async (
   try {
     // Verify user is authenticated
     if (!req.user?.id) {
-      res.status(401).json({
-        error: 'Authentication required',
-        statusCode: 401,
-      });
-      return;
+      throw new HttpError(401, 'Authentication required');
     }
 
-    const { name, description, subject_id } = req.body;
-
-    // Validate that body is an object
-    if (typeof req.body !== 'object' || req.body === null) {
-      res.status(400).json({
-        error: 'Request body must be a JSON object',
-        statusCode: 400,
-      });
-      return;
-    }
-
-    const dto: CreateStudyGroupDTO = {
-      name,
-      description,
-      subject_id,
-    };
-
-    const result = await createStudyGroupService(dto, req.user.id);
-
-    // sendServiceResult handles both success and error responses
+    const result = await createStudyGroupService(req.body, req.user.id);
     sendServiceResult(res, result, 201);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     eventLogger.error('studyGroupController.createStudyGroup', message, {
       userId: req.user?.id,
     });
+
+    if (err instanceof HttpError) {
+      res.status(err.statusCode).json({
+        error: err.message,
+        statusCode: err.statusCode,
+      });
+      return;
+    }
 
     res.status(500).json({
       error: 'Internal server error',
@@ -71,11 +57,7 @@ export const getMyStudyGroups = async (
 ): Promise<void> => {
   try {
     if (!req.user?.id) {
-      res.status(401).json({
-        error: 'Authentication required',
-        statusCode: 401,
-      });
-      return;
+      throw new HttpError(401, 'Authentication required');
     }
 
     const result = await getMyStudyGroupsService(req.user.id);
@@ -85,6 +67,14 @@ export const getMyStudyGroups = async (
     eventLogger.error('studyGroupController.getMyStudyGroups', message, {
       userId: req.user?.id,
     });
+
+    if (err instanceof HttpError) {
+      res.status(err.statusCode).json({
+        error: err.message,
+        statusCode: err.statusCode,
+      });
+      return;
+    }
 
     res.status(500).json({
       error: 'Internal server error',

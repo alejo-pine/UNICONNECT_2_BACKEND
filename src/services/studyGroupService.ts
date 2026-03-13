@@ -10,40 +10,42 @@ import {
   verifySubjectExists,
 } from '../repositories/studyGroupRepository';
 import { eventLogger } from '../utils/eventLogger';
+import { HttpError } from '../utils/httpError';
 
 /**
  * Service to handle study group creation.
  * Validates DTO, checks subject existence, and creates the group.
  */
 export const createStudyGroupService = async (
-  dto: CreateStudyGroupDTO,
+  body: unknown,
   creatorId: string
 ): Promise<ServiceResult<StudyGroupResponse>> => {
   try {
+    // Validate that body is an object
+    if (typeof body !== 'object' || body === null) {
+      throw new HttpError(400, 'Request body must be a JSON object');
+    }
+
+    const { name, description, subject_id } = body as Record<string, unknown>;
+
     // Validate required fields are present and not empty
-    if (!dto.name || typeof dto.name !== 'string' || !dto.name.trim()) {
-      return {
-        data: null,
-        error: 'Field "name" is required and must be a non-empty string',
-        statusCode: 400,
-      };
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      throw new HttpError(400, 'Field "name" is required and must be a non-empty string');
     }
 
-    if (!dto.description || typeof dto.description !== 'string' || !dto.description.trim()) {
-      return {
-        data: null,
-        error: 'Field "description" is required and must be a non-empty string',
-        statusCode: 400,
-      };
+    if (!description || typeof description !== 'string' || !description.trim()) {
+      throw new HttpError(400, 'Field "description" is required and must be a non-empty string');
     }
 
-    if (!dto.subject_id || typeof dto.subject_id !== 'string' || !dto.subject_id.trim()) {
-      return {
-        data: null,
-        error: 'Field "subject_id" is required and must be a non-empty string',
-        statusCode: 400,
-      };
+    if (!subject_id || typeof subject_id !== 'string' || !subject_id.trim()) {
+      throw new HttpError(400, 'Field "subject_id" is required and must be a non-empty string');
     }
+
+    const dto: CreateStudyGroupDTO = {
+      name: name.trim(),
+      description: description.trim(),
+      subject_id: subject_id.trim(),
+    };
 
     // Verify subject exists
     const subjectExists = await verifySubjectExists(dto.subject_id);
@@ -51,20 +53,11 @@ export const createStudyGroupService = async (
       eventLogger.warn('studyGroupService.createStudyGroupService', 'Subject not found', {
         subjectId: dto.subject_id,
       });
-      return {
-        data: null,
-        error: 'Subject does not exist',
-        statusCode: 400,
-      };
+      throw new HttpError(400, 'Subject does not exist');
     }
 
     // Create the study group with transactional member insert
-    const studyGroup = await createStudyGroup(
-      dto.name.trim(),
-      dto.description.trim(),
-      dto.subject_id,
-      creatorId
-    );
+    const studyGroup = await createStudyGroup(dto.name, dto.description, dto.subject_id, creatorId);
 
     eventLogger.info('studyGroupService.createStudyGroupService', 'Study group created', {
       groupId: studyGroup.id,
@@ -88,6 +81,14 @@ export const createStudyGroupService = async (
     eventLogger.error('studyGroupService.createStudyGroupService', message, {
       creatorId,
     });
+
+    if (err instanceof HttpError) {
+      return {
+        data: null,
+        error: err.message,
+        statusCode: err.statusCode,
+      };
+    }
 
     // Check for database constraint errors
     if (message.includes('violates unique constraint') || message.includes('UNIQUE')) {
