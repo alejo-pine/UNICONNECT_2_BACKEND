@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
-import { getAllSubjects, getSubjectById as fetchSubjectById } from '../services/subjectService';
+import { getAllSubjects, getSubjectById as fetchSubjectById, getMySubjects as fetchMySubjects } from '../services/subjectService';
 import { sendServiceResult } from '../utils/controller';
+import { AuthenticatedRequest } from '../types/common';
 
 /**
  * GET /api/subjects
@@ -38,4 +39,41 @@ export const getSubjectById = async (
 
   const result = await fetchSubjectById(id);
   sendServiceResult(res, result, 200);
+};
+
+/**
+ * GET /api/subjects/my-subjects
+ * Returns only the subjects enrolled by the authenticated user.
+ * Requires authentication (token must be provided).
+ * profile_id is extracted from JWT token (req.user.id).
+ */
+export const getMySubjects = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    // Verify user is authenticated
+    if (!req.user?.id) {
+      console.warn('[getMySubjects] No user ID in request');
+      res.status(401).json({
+        error: 'Authentication required',
+        statusCode: 401,
+      });
+      return;
+    }
+
+    console.log('[getMySubjects] Fetching subjects for user:', req.user.id);
+    const result = await fetchMySubjects(req.user.id);
+    console.log('[getMySubjects] Service result:', result);
+    
+    sendServiceResult(res, result, 200);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[subjectController.getMySubjects]', message, { userId: req.user?.id });
+
+    res.status(500).json({
+      error: 'Internal server error',
+      statusCode: 500,
+    });
+  }
 };
