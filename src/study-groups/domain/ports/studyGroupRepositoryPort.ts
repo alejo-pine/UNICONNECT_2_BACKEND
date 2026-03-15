@@ -1,0 +1,12 @@
+import { StudyGroup, StudyGroupWithSubject } from '../entities/studyGroup';
+
+export interface StudyGroupRepositoryPort {
+  create(input: {
+    name: string;
+    description: string;
+    subjectId: string;
+    creatorId: string;
+  }): Promise<StudyGroup>;
+  findByProfileId(profileId: string): Promise<StudyGroupWithSubject[]>;
+  findAll(limit: number): Promise<StudyGroupWithSubject[]>;
+}

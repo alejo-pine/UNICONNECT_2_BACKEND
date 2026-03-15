@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import { AuthenticatedRequest } from '../types/common';
+import { AuthenticatedRequest } from '../shared/http/authenticatedRequest';
 import { env } from '../config/env';
 import { AuthError, extractBearerToken, verifyAccessToken } from '../utils/jwtAuth';
 
