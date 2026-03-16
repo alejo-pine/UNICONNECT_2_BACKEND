@@ -5,6 +5,7 @@ import { StudyGroupRepositoryPort } from '../domain/ports/studyGroupRepositoryPo
 
 const STUDY_GROUPS_TABLE = 'study_group';
 const GROUP_MEMBERS_TABLE = 'group_member';
+const PROFILE_SUBJECT_TABLE = 'profile_subject';
 
 const mapStudyGroup = (row: {
   id: string;
@@ -23,6 +24,21 @@ const mapStudyGroup = (row: {
 });
 
 export class SupabaseStudyGroupRepository implements StudyGroupRepositoryPort {
+  async verifyEnrollment(profileId: string, subjectId: string): Promise<boolean> {
+    const { data, error } = await supabase
+      .from(PROFILE_SUBJECT_TABLE)
+      .select('profile_id')
+      .eq('profile_id', profileId)
+      .eq('subject_id', subjectId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Failed to verify enrollment: ${error.message}`);
+    }
+
+    return data !== null;
+  }
+
   async create(input: {
     name: string;
     description: string;
@@ -147,6 +163,49 @@ export class SupabaseStudyGroupRepository implements StudyGroupRepositoryPort {
         `
       )
       .limit(limit);
+
+    if (error) {
+      throw new Error(`Database query failed: ${error.message}`);
+    }
+
+    const rows = (data ?? []) as Array<{
+      id: string;
+      name: string;
+      description: string;
+      subject_id: string;
+      creator_id: string;
+      created_at: string;
+      subject: Array<SubjectSummary>;
+    }>;
+
+    return rows.map((group) => ({
+      ...mapStudyGroup(group),
+      subject: Array.isArray(group.subject) && group.subject.length > 0 ? group.subject[0] : undefined,
+    }));
+  }
+
+  async findAvailableBySubject(
+    subjectId: string,
+    currentProfileId: string
+  ): Promise<StudyGroupWithSubject[]> {
+    const { data, error } = await supabase
+      .from(STUDY_GROUPS_TABLE)
+      .select(
+        `
+        id,
+        name,
+        description,
+        subject_id,
+        creator_id,
+        created_at,
+        subject!subject_id(
+          id,
+          name
+        )
+        `
+      )
+      .eq('subject_id', subjectId)
+      .neq('creator_id', currentProfileId);
 
     if (error) {
       throw new Error(`Database query failed: ${error.message}`);

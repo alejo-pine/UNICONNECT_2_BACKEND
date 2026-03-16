@@ -77,3 +77,34 @@ export const getAllStudyGroups = async (req: AuthenticatedRequest, res: Response
     handleControllerError(err, res, 'studyGroupController.getAllStudyGroups', { limit: 50 });
   }
 };
+
+export const getAvailableStudyGroupsBySubject = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    if (!req.user?.id) {
+      throw new HttpError(401, 'Authentication required');
+    }
+
+    const subjectId = typeof req.params.subjectId === 'string' ? req.params.subjectId.trim() : '';
+    if (!subjectId) {
+      throw new HttpError(400, 'Field "subjectId" is required and must be a non-empty string');
+    }
+
+    const result = await studyGroupDependencies.getAvailableStudyGroupsBySubjectUseCase.execute(
+      subjectId,
+      req.user.id
+    );
+
+    sendServiceResult(res, {
+      ...result,
+      data: result.data ? toStudyGroupApiResponseList(result.data) : null,
+    });
+  } catch (err: unknown) {
+    handleControllerError(err, res, 'studyGroupController.getAvailableStudyGroupsBySubject', {
+      userId: (req.user as { id?: string } | undefined)?.id,
+      subjectId: req.params?.subjectId,
+    });
+  }
+};
