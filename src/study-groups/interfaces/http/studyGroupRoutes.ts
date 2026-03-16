@@ -1,0 +1,23 @@
+import { Router } from 'express';
+import authMiddleware from '../../../middlewares/auth';
+import { AuthenticatedRequest } from '../../../shared/http/authenticatedRequest';
+import { asyncHandler } from '../../../utils/controller';
+import { createStudyGroup, getAllStudyGroups, getMyStudyGroups } from './studyGroupController';
+
+const router: Router = Router();
+
+router.get('/', asyncHandler((req, res) => getAllStudyGroups(req as AuthenticatedRequest, res)));
+
+router.get(
+  '/my-groups',
+  authMiddleware,
+  asyncHandler((req, res) => getMyStudyGroups(req as AuthenticatedRequest, res))
+);
+
+router.post(
+  '/',
+  authMiddleware,
+  asyncHandler((req, res) => createStudyGroup(req as AuthenticatedRequest, res))
+);
+
+export default router;

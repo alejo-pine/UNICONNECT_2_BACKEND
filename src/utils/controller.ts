@@ -1,7 +1,7 @@
 import { NextFunction, RequestHandler, Response } from 'express';
 import { ParamsDictionary } from 'express-serve-static-core';
 import { ParsedQs } from 'qs';
-import { ServiceResult } from '../types/common';
+import { ServiceResult } from '../shared/application/serviceResult';
 
 export const sendServiceResult = <T>(
   res: Response,
