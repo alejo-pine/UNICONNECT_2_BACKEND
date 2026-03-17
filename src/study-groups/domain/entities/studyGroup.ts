@@ -18,4 +18,5 @@ export interface StudyGroupWithSubject extends StudyGroup {
 
 export interface StudyGroupResponse extends StudyGroupWithSubject {
   isAdmin: boolean;
+  isMember: boolean;
 }

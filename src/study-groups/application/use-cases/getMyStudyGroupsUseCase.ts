@@ -14,6 +14,7 @@ export class GetMyStudyGroupsUseCase {
         data: groups.map((group) => ({
           ...group,
           isAdmin: group.creatorId === profileId,
+          isMember: true,
         })),
         error: null,
         statusCode: 200,

@@ -26,10 +26,14 @@ export class GetAvailableStudyGroupsBySubjectUseCase {
         currentProfileId
       );
 
+      const myGroups = await this.studyGroupRepository.findByProfileId(currentProfileId);
+      const myGroupIds = new Set(myGroups.map((group) => group.id));
+
       return {
         data: groups.map((group) => ({
           ...group,
           isAdmin: false,
+          isMember: myGroupIds.has(group.id),
         })),
         error: null,
         statusCode: 200,

@@ -226,4 +226,93 @@ export class SupabaseStudyGroupRepository implements StudyGroupRepositoryPort {
       subject: Array.isArray(group.subject) && group.subject.length > 0 ? group.subject[0] : undefined,
     }));
   }
+
+  async findById(groupId: string): Promise<StudyGroupWithSubject | null> {
+    const { data, error } = await supabase
+      .from(STUDY_GROUPS_TABLE)
+      .select(
+        `
+        id,
+        name,
+        description,
+        subject_id,
+        creator_id,
+        created_at,
+        subject!subject_id(
+          id,
+          name
+        )
+        `
+      )
+      .eq('id', groupId)
+      .single();
+
+    if (error) {
+      throw new Error(`Database query failed: ${error.message}`);
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    const group = data as {
+      id: string;
+      name: string;
+      description: string;
+      subject_id: string;
+      creator_id: string;
+      created_at: string;
+      subject: Array<SubjectSummary>;
+    };
+
+    return {
+      ...mapStudyGroup(group),
+      subject: Array.isArray(group.subject) && group.subject.length > 0 ? group.subject[0] : undefined,
+    };
+  }
+
+  async isMember(profileId: string, groupId: string): Promise<boolean> {
+    const { data, error } = await supabase
+      .from(GROUP_MEMBERS_TABLE)
+      .select('profile_id')
+      .eq('profile_id', profileId)
+      .eq('group_id', groupId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Failed to verify membership: ${error.message}`);
+    }
+
+    return data !== null;
+  }
+
+  async addMember(profileId: string, groupId: string): Promise<void> {
+    const alreadyMember = await this.isMember(profileId, groupId);
+    if (alreadyMember) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from(GROUP_MEMBERS_TABLE)
+      .insert({
+        group_id: groupId,
+        profile_id: profileId,
+      });
+
+    if (error) {
+      throw new Error(`Failed to add member to group: ${error.message}`);
+    }
+  }
+
+  async removeMember(profileId: string, groupId: string): Promise<void> {
+    const { error } = await supabase
+      .from(GROUP_MEMBERS_TABLE)
+      .delete()
+      .eq('group_id', groupId)
+      .eq('profile_id', profileId);
+
+    if (error) {
+      throw new Error(`Failed to remove member from group: ${error.message}`);
+    }
+  }
 }

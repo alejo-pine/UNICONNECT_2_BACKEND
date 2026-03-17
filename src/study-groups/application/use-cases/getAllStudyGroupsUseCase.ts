@@ -14,6 +14,7 @@ export class GetAllStudyGroupsUseCase {
         data: groups.map((group) => ({
           ...group,
           isAdmin: false,
+          isMember: false,
         })),
         error: null,
         statusCode: 200,

@@ -7,6 +7,8 @@ import {
   getAllStudyGroups,
   getAvailableStudyGroupsBySubject,
   getMyStudyGroups,
+  joinStudyGroup,
+  leaveStudyGroup,
 } from './studyGroupController';
 
 const router: Router = Router();
@@ -28,6 +30,18 @@ router.post(
   '/',
   authMiddleware,
   asyncHandler((req, res) => createStudyGroup(req as AuthenticatedRequest, res))
+);
+
+router.post(
+  '/:groupId/join',
+  authMiddleware,
+  asyncHandler((req, res) => joinStudyGroup(req as AuthenticatedRequest, res))
+);
+
+router.post(
+  '/:groupId/leave',
+  authMiddleware,
+  asyncHandler((req, res) => leaveStudyGroup(req as AuthenticatedRequest, res))
 );
 
 export default router;

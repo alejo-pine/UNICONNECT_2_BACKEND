@@ -11,4 +11,8 @@ export interface StudyGroupRepositoryPort {
   findAll(limit: number): Promise<StudyGroupWithSubject[]>;
   verifyEnrollment(profileId: string, subjectId: string): Promise<boolean>;
   findAvailableBySubject(subjectId: string, currentProfileId: string): Promise<StudyGroupWithSubject[]>;
+  findById(groupId: string): Promise<StudyGroupWithSubject | null>;
+  isMember(profileId: string, groupId: string): Promise<boolean>;
+  addMember(profileId: string, groupId: string): Promise<void>;
+  removeMember(profileId: string, groupId: string): Promise<void>;
 }
