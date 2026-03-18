@@ -41,6 +41,7 @@ export class CreateStudyGroupUseCase {
         data: {
           ...studyGroup,
           isAdmin: true,
+          isMember: true,
         },
         error: null,
         statusCode: 201,
